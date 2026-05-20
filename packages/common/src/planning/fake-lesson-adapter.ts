@@ -2,17 +2,99 @@ import {
   LearnerModel,
   LessonPlanObject,
   NormalizedRequest,
-  ReasoningContext
+  WorksheetContentMode,
+  WorksheetItem
 } from "../lesson-types";
+import { getWorksheetModeDefinition } from "../worksheet/worksheet-content-modes";
+import { renderWorksheetHeader } from "../worksheet/render-worksheet-header";
 import { GenerateModelInput, LessonModelAdapter } from "./model-adapter";
 
-const renderWorksheetFromPlan = (
+const formatItems = (items: { prompt: string; purpose: string }[]) =>
+  items.map((item, i) => `${i + 1}. ${item.prompt}\n   _Purpose: ${item.purpose}_`).join("\n\n");
+
+const buildPracticeItems = (
+  topic: string,
+  kind: "exercise" | "observation" | "reflection" | "self_check",
+  count: number
+): WorksheetItem[] => {
+  const templates: Record<typeof kind, (index: number) => WorksheetItem> = {
+    exercise: (index) => ({
+      prompt:
+        index === 0
+          ? `Explain ${topic} in your own words.`
+          : index === 1
+            ? `Apply ${topic} to a concrete example from your experience.`
+            : index === 2
+              ? `Compare two situations where ${topic} applies and one where it does not.`
+              : index === 3
+                ? `Identify a common mistake about ${topic} and correct it.`
+                : index === 4
+                  ? `Solve a short scenario that requires ${topic}. Show your reasoning.`
+                  : `Create a new practice question about ${topic} and answer it.`,
+      purpose:
+        index === 0
+          ? "Verify conceptual grasp"
+          : index === 1
+            ? "Embody understanding through use"
+            : index === 2
+              ? "Strengthen distinction and judgment"
+              : index === 3
+                ? "Correct likely confusions"
+                : index === 4
+                  ? "Apply in a structured scenario"
+                  : "Extend and self-test understanding",
+      response_format: "open_ended"
+    }),
+    observation: (index) => ({
+      prompt:
+        index === 0
+          ? `Observe one real instance of ${topic} in the next 24 hours. Record what you notice.`
+          : `Find an example of ${topic} in a book, video, or conversation. Summarize the example.`,
+      purpose: index === 0 ? "Ground theory in reality" : "Connect learning to lived context",
+      response_format: "open_ended"
+    }),
+    reflection: (index) => ({
+      prompt:
+        index === 0
+          ? `Why does ${topic} matter for your learning?`
+          : `What is still unclear to you about ${topic}?`,
+      purpose:
+        index === 0 ? "Connect to why-it-matters framing" : "Surface remaining gaps honestly",
+      response_format: "open_ended"
+    }),
+    self_check: (index) => ({
+      prompt:
+        index === 0
+          ? `Can you define the key terms related to ${topic}?`
+          : index === 1
+            ? `Can you give one real-world example of ${topic} without looking at your notes?`
+            : `Can you teach ${topic} to someone else in two sentences?`,
+      purpose:
+        index === 0
+          ? "Verify definition mastery"
+          : index === 1
+            ? "Check recall and transfer"
+            : "Confirm teach-back capability",
+      response_format: "open_ended"
+    })
+  };
+
+  return Array.from({ length: count }, (_, index) => templates[kind](index));
+};
+
+const headerFromLessonPlan = (lessonPlan: LessonPlanObject): string =>
+  renderWorksheetHeader({
+    name: lessonPlan.generation_context.worksheet_header_name,
+    date: lessonPlan.generation_context.worksheet_header_date,
+    description: lessonPlan.generation_context.worksheet_header_description
+  });
+
+const renderFullWorksheet = (
   lessonPlan: LessonPlanObject,
   learnerModel: LearnerModel
 ): string => {
   const wb = lessonPlan.lesson_blueprint.worksheet_blueprint;
-  const formatItems = (items: { prompt: string; purpose: string }[]) =>
-    items.map((item, i) => `${i + 1}. ${item.prompt}\n   _Purpose: ${item.purpose}_`).join("\n\n");
+  const bp = lessonPlan.lesson_blueprint;
 
   return [
     `# ${lessonPlan.topic_model.title}`,
@@ -35,6 +117,12 @@ const renderWorksheetFromPlan = (
       (d) => `- ${d.term_a} vs ${d.term_b}: ${d.distinction}`
     ),
     "",
+    "## Theoretical Overview",
+    bp.theoretical_overview.content,
+    "",
+    "## Real-World Examples",
+    bp.real_manifestation.content,
+    "",
     "## Guided Exercises",
     formatItems(wb.exercises),
     "",
@@ -52,16 +140,118 @@ const renderWorksheetFromPlan = (
   ].join("\n");
 };
 
+const renderPracticeOnlyWorksheet = (
+  lessonPlan: LessonPlanObject,
+  learnerModel: LearnerModel
+): string => {
+  const wb = lessonPlan.lesson_blueprint.worksheet_blueprint;
+
+  return [
+    `# ${lessonPlan.topic_model.title} — Practice`,
+    "",
+    "## Worksheet Title",
+    `${lessonPlan.topic_model.title} (${lessonPlan.constitutional_alignment.primary_domain})`,
+    "",
+    "## Brief Learner Orientation",
+    `You are moving from: ${learnerModel.current_knowledge_context}`,
+    `You are working toward: ${learnerModel.target_knowledge_context}`,
+    "",
+    "## Guided Exercises",
+    formatItems(wb.exercises),
+    "",
+    "## Observation / Application Tasks",
+    formatItems(wb.observation_tasks),
+    "",
+    "## Reflection Prompts",
+    formatItems(wb.reflection_prompts),
+    "",
+    "## Self-Check",
+    formatItems(wb.self_check_items),
+    "",
+    "## Capability Checkpoint",
+    wb.capability_checkpoint
+  ].join("\n");
+};
+
+const renderInformationOnlyWorksheet = (
+  lessonPlan: LessonPlanObject,
+  learnerModel: LearnerModel
+): string => {
+  const bp = lessonPlan.lesson_blueprint;
+
+  return [
+    `# ${lessonPlan.topic_model.title}`,
+    "",
+    "## Worksheet Title and Domain Placement",
+    `**Primary domain:** ${lessonPlan.constitutional_alignment.primary_domain}`,
+    `**Adjacent domains:** ${lessonPlan.constitutional_alignment.adjacent_domains.join(", ")}`,
+    bp.orientation.content,
+    "",
+    "## Learner Orientation",
+    `**Current knowledge context:** ${learnerModel.current_knowledge_context}`,
+    `**Target knowledge context:** ${learnerModel.target_knowledge_context}`,
+    `**Transformation:** ${learnerModel.transformation_goal}`,
+    "",
+    "## Core Definitions and Distinctions",
+    ...lessonPlan.topic_model.definitions.map((d) => `- **${d.term}:** ${d.definition}`),
+    "",
+    "**Distinctions:**",
+    ...lessonPlan.topic_model.distinctions.map(
+      (d) => `- ${d.term_a} vs ${d.term_b}: ${d.distinction}`
+    ),
+    "",
+    "## Theoretical Overview",
+    bp.theoretical_overview.content,
+    "",
+    "## Real-World Examples",
+    bp.real_manifestation.content,
+    "",
+    "## Integration",
+    bp.integration.content,
+    "",
+    "## Capability Statement",
+    bp.capability_statement.content
+  ].join("\n");
+};
+
+export const renderWorksheetFromPlan = (
+  lessonPlan: LessonPlanObject,
+  learnerModel: LearnerModel,
+  contentMode: WorksheetContentMode = "full"
+): string => {
+  const header = headerFromLessonPlan(lessonPlan);
+  let body: string;
+
+  switch (contentMode) {
+    case "practice_only":
+      body = renderPracticeOnlyWorksheet(lessonPlan, learnerModel);
+      break;
+    case "information_only":
+      body = renderInformationOnlyWorksheet(lessonPlan, learnerModel);
+      break;
+    default:
+      body = renderFullWorksheet(lessonPlan, learnerModel);
+  }
+
+  return `${header}${body}`;
+};
+
 export const buildDeterministicLessonPlan = (
   request: NormalizedRequest,
   learnerModel: LearnerModel
 ): LessonPlanObject => {
   const lessonId = `lesson-${request.request_id.slice(0, 8)}`;
   const domain = request.explicit_domain ?? "self";
+  const modeDefinition = getWorksheetModeDefinition(request.worksheet_content_mode);
+  const minimums = modeDefinition.practice_minimums;
+  const exerciseCount = Math.max(minimums.exercises, 1);
+  const observationCount = Math.max(minimums.observation_tasks, 1);
+  const reflectionCount = Math.max(minimums.reflection_prompts, 1);
+  const selfCheckCount = Math.max(minimums.self_check_items, 1);
 
   return {
     spec_metadata: {
-      spec_version: "1.0.0",
+      spec_version: "1.2.0",
       lesson_id: lessonId,
       created_at: new Date().toISOString(),
       output_type: request.requested_output_type,
@@ -88,11 +278,15 @@ export const buildDeterministicLessonPlan = (
       requested_depth: request.requested_depth,
       source_request_text: request.source_request_text,
       explicit_audience: request.explicit_audience,
+      worksheet_header_name: request.worksheet_header_name,
+      worksheet_header_date: request.worksheet_header_date,
+      worksheet_header_description: request.worksheet_header_description,
       explicit_domain: request.explicit_domain,
       explicit_subdomain: request.explicit_subdomain,
       topic_id: request.topic_id,
       topic_source: request.topic_source,
       worksheet_response_format: request.worksheet_response_format,
+      worksheet_content_mode: request.worksheet_content_mode,
       user_constraints: request.user_constraints
     },
     student_model: learnerModel,
@@ -155,39 +349,10 @@ export const buildDeterministicLessonPlan = (
         content: `The learner can explain, apply, and integrate ${request.topic} and is able to demonstrate capability in a new context.`
       },
       worksheet_blueprint: {
-        exercises: [
-          {
-            prompt: `Explain ${request.topic} in your own words.`,
-            purpose: "Verify conceptual grasp",
-            response_format: "open_ended"
-          },
-          {
-            prompt: `Apply ${request.topic} to a concrete example from your experience.`,
-            purpose: "Embody understanding through use",
-            response_format: "open_ended"
-          }
-        ],
-        observation_tasks: [
-          {
-            prompt: `Observe one real instance of ${request.topic} in the next 24 hours. Record what you notice.`,
-            purpose: "Ground theory in reality",
-            response_format: "open_ended"
-          }
-        ],
-        reflection_prompts: [
-          {
-            prompt: `Why does ${request.topic} matter for your learning?`,
-            purpose: "Connect to why-it-matters framing",
-            response_format: "open_ended"
-          }
-        ],
-        self_check_items: [
-          {
-            prompt: `Can you define the key terms related to ${request.topic}?`,
-            purpose: "Verify definition mastery",
-            response_format: "open_ended"
-          }
-        ],
+        exercises: buildPracticeItems(request.topic, "exercise", exerciseCount),
+        observation_tasks: buildPracticeItems(request.topic, "observation", observationCount),
+        reflection_prompts: buildPracticeItems(request.topic, "reflection", reflectionCount),
+        self_check_items: buildPracticeItems(request.topic, "self_check", selfCheckCount),
         capability_checkpoint: `Demonstrate understanding of ${request.topic} by completing all exercises and explaining one real-world connection.`
       }
     },
@@ -222,6 +387,9 @@ export class FakeLessonModelAdapter extends LessonModelAdapter {
         topic: request.topic,
         requested_output_type: request.requested_output_type,
         explicit_audience: request.explicit_audience,
+        worksheet_header_name: request.worksheet_header_name,
+        worksheet_header_date: request.worksheet_header_date,
+        worksheet_header_description: request.worksheet_header_description,
         explicit_domain: request.explicit_domain as NormalizedRequest["explicit_domain"],
         explicit_subdomain: request.explicit_subdomain,
         topic_id: request.topic_id,
@@ -230,6 +398,7 @@ export class FakeLessonModelAdapter extends LessonModelAdapter {
         target_knowledge_context: input.reasoningContext.learner_model.target_knowledge_context,
         requested_depth: request.requested_depth,
         worksheet_response_format: request.worksheet_response_format ?? "auto",
+        worksheet_content_mode: request.worksheet_content_mode ?? "full",
         user_constraints: request.user_constraints ?? [],
         source_request_text: request.source_request_text
       };
@@ -243,12 +412,11 @@ export class FakeLessonModelAdapter extends LessonModelAdapter {
       }
       return renderWorksheetFromPlan(
         input.reasoningContext.lesson_plan,
-        input.reasoningContext.learner_model
+        input.reasoningContext.learner_model,
+        input.reasoningContext.output_contract.worksheet_content_mode
       );
     }
 
     return JSON.stringify({ audit: "skipped in fake adapter" });
   }
 }
-
-export { renderWorksheetFromPlan };

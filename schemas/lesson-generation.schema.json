@@ -117,6 +117,9 @@
         },
         "source_request_text": { "type": "string", "minLength": 1 },
         "explicit_audience": { "type": "string" },
+        "worksheet_header_name": { "type": "string" },
+        "worksheet_header_date": { "type": "string" },
+        "worksheet_header_description": { "type": "string" },
         "explicit_domain": { "type": "string" },
         "explicit_subdomain": { "type": "string" },
         "topic_id": { "type": "string" },
@@ -136,6 +139,10 @@
             "quiz",
             "test"
           ]
+        },
+        "worksheet_content_mode": {
+          "type": "string",
+          "enum": ["full", "practice_only", "information_only"]
         },
         "user_constraints": {
           "type": "array",

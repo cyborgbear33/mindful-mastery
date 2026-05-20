@@ -218,7 +218,16 @@ export class LessonPipeline {
             markdown_required: false,
             min_heading_count: 0,
             min_output_requirement_coverage: 0,
-            worksheet_response_format: "auto"
+            worksheet_response_format: "auto",
+            worksheet_content_mode: input.normalizedRequest.worksheet_content_mode,
+            practice_minimums: {
+              exercises: 0,
+              observation_tasks: 0,
+              reflection_prompts: 0,
+              self_check_items: 0
+            },
+            omit_information_sections: false,
+            omit_practice_sections: false
           },
           meta: {
             guidance_used: input.guidanceSnippets,

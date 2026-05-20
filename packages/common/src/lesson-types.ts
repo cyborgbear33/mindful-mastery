@@ -28,6 +28,12 @@ export const InferenceConfidenceSchema = z.enum([
   "inferred_speculative"
 ]);
 
+export const WorksheetContentModeSchema = z.enum([
+  "full",
+  "practice_only",
+  "information_only"
+]);
+
 export const WorksheetResponseFormatSchema = z.enum([
   "auto",
   "open_ended",
@@ -50,6 +56,9 @@ export const LessonRequestSchema = z.object({
   topic: z.string().min(1),
   requested_output_type: OutputTypeSchema.default("worksheet"),
   explicit_audience: z.string().optional(),
+  worksheet_header_name: z.string().optional(),
+  worksheet_header_date: z.string().optional(),
+  worksheet_header_description: z.string().optional(),
   explicit_domain: LearningDomainSchema.optional(),
   explicit_subdomain: z.string().optional(),
   topic_id: z.string().optional(),
@@ -58,6 +67,7 @@ export const LessonRequestSchema = z.object({
   target_knowledge_context: z.string().optional(),
   requested_depth: DepthLevelSchema.default("standard"),
   worksheet_response_format: WorksheetResponseFormatSchema.default("auto"),
+  worksheet_content_mode: WorksheetContentModeSchema.default("full"),
   user_constraints: z.array(z.string()).default([]),
   source_request_text: z.string().optional(),
   model_id: z.string().optional()
@@ -69,6 +79,9 @@ export const NormalizedRequestSchema = z.object({
   topic: z.string().min(1),
   requested_output_type: OutputTypeSchema,
   explicit_audience: z.string().optional(),
+  worksheet_header_name: z.string().optional(),
+  worksheet_header_date: z.string().optional(),
+  worksheet_header_description: z.string().optional(),
   explicit_domain: LearningDomainSchema.optional(),
   explicit_subdomain: z.string().optional(),
   topic_id: z.string().optional(),
@@ -77,6 +90,7 @@ export const NormalizedRequestSchema = z.object({
   target_knowledge_context: z.string().optional(),
   requested_depth: DepthLevelSchema,
   worksheet_response_format: WorksheetResponseFormatSchema,
+  worksheet_content_mode: WorksheetContentModeSchema,
   user_constraints: z.array(z.string()),
   source_request_text: z.string().min(1),
   model_id: z.string().optional()
@@ -159,11 +173,15 @@ export const GenerationContextSchema = z.object({
   requested_depth: DepthLevelSchema,
   source_request_text: z.string().min(1),
   explicit_audience: z.string().optional(),
+  worksheet_header_name: z.string().optional(),
+  worksheet_header_date: z.string().optional(),
+  worksheet_header_description: z.string().optional(),
   explicit_domain: z.string().optional(),
   explicit_subdomain: z.string().optional(),
   topic_id: z.string().optional(),
   topic_source: z.enum(["ontology", "free_text"]).optional(),
   worksheet_response_format: WorksheetResponseFormatSchema.optional(),
+  worksheet_content_mode: WorksheetContentModeSchema.optional(),
   user_constraints: z.array(z.string()).optional()
 });
 
@@ -206,12 +224,23 @@ export const LessonPlanObjectSchema = z.object({
   quality_controls: QualityControlsSchema
 });
 
+export const WorksheetPracticeMinimumsSchema = z.object({
+  exercises: z.number().int().min(0),
+  observation_tasks: z.number().int().min(0),
+  reflection_prompts: z.number().int().min(0),
+  self_check_items: z.number().int().min(0)
+});
+
 export const WorksheetOutputContractSchema = z.object({
   required_sections: z.array(z.string()),
   markdown_required: z.boolean(),
   min_heading_count: z.number(),
   min_output_requirement_coverage: z.number(),
-  worksheet_response_format: WorksheetResponseFormatSchema.default("auto")
+  worksheet_response_format: WorksheetResponseFormatSchema.default("auto"),
+  worksheet_content_mode: WorksheetContentModeSchema.default("full"),
+  practice_minimums: WorksheetPracticeMinimumsSchema,
+  omit_information_sections: z.boolean().default(false),
+  omit_practice_sections: z.boolean().default(false)
 });
 
 export const GuidanceSnippetSchema = z.object({
@@ -298,6 +327,7 @@ export type AuditResult = z.infer<typeof AuditResultSchema>;
 export type QualityMetrics = z.infer<typeof QualityMetricsSchema>;
 export type GenerateLessonResponse = z.infer<typeof GenerateLessonResponseSchema>;
 export type WorksheetOutputContract = z.infer<typeof WorksheetOutputContractSchema>;
+export type WorksheetContentMode = z.infer<typeof WorksheetContentModeSchema>;
 
 export const REQUIRED_WORKSHEET_SECTIONS = [
   "Worksheet Title and Domain Placement",

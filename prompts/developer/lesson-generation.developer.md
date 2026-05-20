@@ -74,6 +74,14 @@ Avoid:
 - undefined jargon,
 - shallow summaries pretending to be lessons.
 
+## Worksheet content modes
+When `worksheet_content_mode` is provided, honor it during rendering:
+- `full`: teaching information plus practice (default)
+- `practice_only`: practice-heavy output with more exercises and no teaching exposition
+- `information_only`: teaching handout without student exercises
+
+See `docs/runtime/worksheet-content-modes.md` for mode-specific section and practice minimum rules.
+
 ## Completion check
 Before finalizing, ensure the output answers these questions:
 - Where does this topic belong?

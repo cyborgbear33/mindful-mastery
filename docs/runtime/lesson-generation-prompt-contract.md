@@ -63,7 +63,10 @@ The AI must know or infer:
 - whether the output is a lesson, unit, study guide, module, manual section, or curriculum segment,
 - the desired depth,
 - the intended audience,
+- worksheet content mode when generating worksheets (`full`, `practice_only`, or `information_only`),
 - and any constraints on format or tone.
+
+When `worksheet_content_mode` is set, the planner must still build the full lesson object internally, but the renderer must follow the mode rules in `docs/runtime/worksheet-content-modes.md`.
 
 ---
 

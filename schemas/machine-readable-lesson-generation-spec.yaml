@@ -1,5 +1,5 @@
 spec_name: AtlanteanLearningLessonGenerationSpec
-spec_version: 1.1.0
+spec_version: 1.2.0
 spec_kind: machine_readable_lesson_generation_spec
 purpose: >-
   A machine-readable specification for AI systems that generate lessons,
@@ -79,6 +79,13 @@ controlled_vocabularies:
     - mixed
     - quiz
     - test
+  worksheet_content_modes:
+    full:
+      description: Complete worksheet with teaching information and practice problems.
+    practice_only:
+      description: Practice-heavy output with exercises, checks, and application tasks only.
+    information_only:
+      description: Teaching handout with definitions, explanations, and integration without practice prompts.
 
 object_definitions:
   spec_metadata:
@@ -116,11 +123,15 @@ object_definitions:
       - source_request_text
     optional_fields:
       - explicit_audience
+      - worksheet_header_name
+      - worksheet_header_date
+      - worksheet_header_description
       - explicit_domain
       - explicit_subdomain
       - topic_id
       - topic_source
       - worksheet_response_format
+      - worksheet_content_mode
       - user_constraints
 
   student_model:

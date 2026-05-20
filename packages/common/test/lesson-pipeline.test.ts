@@ -30,6 +30,7 @@ describe("evaluateWorksheetContract", () => {
       explicit_domain: "self",
       requested_depth: "standard",
       worksheet_response_format: "auto",
+      worksheet_content_mode: "full",
       user_constraints: []
     });
     expect(response.worksheet).toContain("Worksheet Title and Domain Placement");
@@ -47,6 +48,7 @@ describe("buildPromptPackage", () => {
       explicit_domain: "trivium",
       requested_depth: "standard",
       worksheet_response_format: "auto",
+      worksheet_content_mode: "full",
       user_constraints: []
     });
     expect(response.llm_prompt.length).toBeGreaterThan(100);

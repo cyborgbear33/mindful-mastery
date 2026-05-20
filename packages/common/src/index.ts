@@ -10,3 +10,4 @@ export * from "./planning/model-adapter";
 export * from "./planning/fake-lesson-adapter";
 export * from "./orchestrator/lesson-pipeline";
 export * from "./ontology";
+export * from "./worksheet";

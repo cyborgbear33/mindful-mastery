@@ -20,6 +20,7 @@ describe("regression harness", () => {
       current_knowledge_context: golden.student_model.current_knowledge_context,
       requested_depth: "standard",
       worksheet_response_format: "auto",
+      worksheet_content_mode: "full",
       user_constraints: []
     });
 

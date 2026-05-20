@@ -10,6 +10,7 @@ export const AUTHORITY_FILES = [
     priority: "required" as const
   },
   { path: "docs/runtime/lesson-generation-prompt-contract.md", priority: "required" as const },
+  { path: "docs/runtime/worksheet-content-modes.md", priority: "mode-specific" as const },
   { path: "prompts/system/constitution-bound-lesson-architect.system.md", priority: "required" as const },
   { path: "prompts/developer/lesson-generation.developer.md", priority: "required" as const }
 ];
