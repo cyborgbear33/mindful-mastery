@@ -127,6 +127,7 @@
           "type": "string",
           "enum": ["ontology", "free_text"]
         },
+        "topic_focus": { "type": "string" },
         "worksheet_response_format": {
           "type": "string",
           "enum": [

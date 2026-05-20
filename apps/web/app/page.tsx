@@ -123,6 +123,14 @@ function RequiredMark() {
   );
 }
 
+function RecommendedHint() {
+  return (
+    <span style={{ color: "#9aa0a6", fontWeight: 400, marginLeft: "0.35rem", fontSize: "0.85rem" }}>
+      (recommended)
+    </span>
+  );
+}
+
 function resolveSubdomainValue(
   input: string,
   options: OntologySubdomain[]
@@ -254,7 +262,7 @@ function createPdfExportElement(source: HTMLElement): HTMLElement {
 }
 
 export default function HomePage() {
-  const [topic, setTopic] = useState("Attention as the Gate of Learning");
+  const [topicFocus, setTopicFocus] = useState("");
   const [worksheetHeaderName, setWorksheetHeaderName] = useState("");
   const [worksheetHeaderDate, setWorksheetHeaderDate] = useState(defaultWorksheetDateValue);
   const [worksheetHeaderDescription, setWorksheetHeaderDescription] = useState("");
@@ -351,7 +359,7 @@ export default function HomePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          topic,
+          topic: topicFocus.trim() || undefined,
           topic_source: "free_text",
           requested_output_type: "worksheet",
           worksheet_header_name: worksheetHeaderName.trim() || undefined,
@@ -542,15 +550,17 @@ export default function HomePage() {
             )}
           </label>
           <label>
-            Topic
-            <RequiredMark />
+            Topic focus
+            <RecommendedHint />
             <input
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              required
+              value={topicFocus}
+              onChange={(e) => setTopicFocus(e.target.value)}
               style={inputStyle}
-              placeholder="What should this worksheet cover?"
+              placeholder="Narrow the lesson, e.g. fractions on a number line"
             />
+            <span style={{ display: "block", marginTop: "0.35rem", color: "#9aa0a6", fontSize: "0.85rem" }}>
+              Optional focus within the domain and subdomain you selected above.
+            </span>
           </label>
         </div>
         <fieldset style={{ border: "none", margin: 0, padding: 0 }}>

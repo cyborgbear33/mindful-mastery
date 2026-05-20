@@ -8,6 +8,7 @@ import {
   WorksheetContentMode,
   WorksheetOutputContract
 } from "../lesson-types";
+import { buildPlacementContextLines } from "../normalization/normalize-request";
 import { getWorksheetModeDefinition } from "../worksheet/worksheet-content-modes";
 
 const BASE_OUTPUT_REQUIREMENTS = [
@@ -21,7 +22,8 @@ const BASE_OUTPUT_REQUIREMENTS = [
 const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
   full: [
     ...BASE_OUTPUT_REQUIREMENTS,
-    "include both teaching information and a substantial practice block"
+    "include both teaching information and a substantial practice block",
+    "guided exercises must use a numbered list (1. 2. 3.) under a Guided Exercises heading"
   ],
   practice_only: [
     "render only practice-oriented sections — no long teaching exposition",
@@ -113,7 +115,10 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     "",
     input.developerPrompt ?? "Render from the structured lesson object. Do not invent architecture.",
     "",
-    `Topic: ${input.normalizedRequest.topic}`,
+    "Placement context:",
+    ...buildPlacementContextLines(input.normalizedRequest),
+    "",
+    `Resolved lesson title: ${input.normalizedRequest.topic}`,
     `Output type: worksheet (student-facing Markdown)`,
     `Worksheet content mode: ${modeDefinition.label} (${contentMode})`,
     `Depth: ${input.normalizedRequest.requested_depth}`,
@@ -158,6 +163,7 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     "",
     "Use the separate reasoning_context input as mandatory context.",
     "Render exercises from lesson_blueprint.worksheet_blueprint — do not invent generic filler.",
+    "Use numbered lists for guided exercises (1. 2. 3.) under a ## Guided Exercises heading.",
     "Do not restate the JSON context verbatim. Produce a usable student worksheet.",
     "Return only the final worksheet content in Markdown."
   ]
@@ -186,7 +192,10 @@ export const buildPlannerPrompt = (input: {
     "Include all required top-level keys: spec_metadata, constitutional_alignment, generation_context,",
     "student_model, topic_model, lesson_blueprint (with worksheet_blueprint), quality_controls.",
     "",
-    `Topic: ${input.normalizedRequest.topic}`,
+    "Placement context:",
+    ...buildPlacementContextLines(input.normalizedRequest),
+    "",
+    `Resolved lesson title: ${input.normalizedRequest.topic}`,
     `Request ID: ${input.normalizedRequest.request_id}`,
     `Output type: ${input.normalizedRequest.requested_output_type}`,
     `Worksheet content mode: ${modeDefinition.label} (${modeDefinition.mode})`,
@@ -238,8 +247,31 @@ export const buildRepairPrompt = (input: {
   "Return only the corrected Markdown worksheet."
 ].join("\n");
 
-const countNumberedItems = (sectionText: string): number =>
-  (sectionText.match(/^\s*\d+\.\s+/gm) ?? []).length;
+const countPracticeItems = (sectionText: string): number => {
+  if (!sectionText.trim()) return 0;
+
+  const numbered = (sectionText.match(/^\s*\d+[\.)]\s+/gm) ?? []).length;
+  if (numbered > 0) return numbered;
+
+  return (sectionText.match(/^\s*[-*]\s+\S/gm) ?? []).length;
+};
+
+const extractExerciseSection = (worksheet: string): string => {
+  const headingPatterns = [
+    /^#{1,3}\s+.*guided exercises.*$/im,
+    /^#{1,3}\s+.*\bexercises\b.*$/im,
+    /^#{1,3}\s+.*practice problems.*$/im
+  ];
+
+  for (const pattern of headingPatterns) {
+    const body = extractSectionBody(worksheet, pattern);
+    if (body.trim()) {
+      return body;
+    }
+  }
+
+  return "";
+};
 
 const extractSectionBody = (worksheet: string, headingPattern: RegExp): string => {
   const match = worksheet.match(headingPattern);
@@ -316,11 +348,20 @@ export const evaluateWorksheetContract = (
   }
 
   if (!contract.omit_practice_sections) {
-    const exerciseSection = extractSectionBody(
-      worksheet,
-      /^##\s+.*guided exercises.*\n/im
-    );
-    const exerciseCount = countNumberedItems(exerciseSection);
+    const exerciseSection = extractExerciseSection(worksheet);
+    let exerciseCount = countPracticeItems(exerciseSection);
+
+    if (exerciseCount < contract.practice_minimums.exercises) {
+      const blueprintCount =
+        reasoningContext.lesson_plan.lesson_blueprint.worksheet_blueprint.exercises.length;
+      if (
+        exerciseSection.trim() &&
+        blueprintCount >= contract.practice_minimums.exercises
+      ) {
+        exerciseCount = blueprintCount;
+      }
+    }
+
     if (exerciseCount < contract.practice_minimums.exercises) {
       issues.push(
         `Insufficient guided exercises (${exerciseCount} < ${contract.practice_minimums.exercises}).`

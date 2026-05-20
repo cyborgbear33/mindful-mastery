@@ -53,7 +53,7 @@ export const WorksheetItemResponseFormatSchema = z.enum([
 ]);
 
 export const LessonRequestSchema = z.object({
-  topic: z.string().min(1),
+  topic: z.string().optional(),
   requested_output_type: OutputTypeSchema.default("worksheet"),
   explicit_audience: z.string().optional(),
   worksheet_header_name: z.string().optional(),
@@ -77,6 +77,7 @@ export const NormalizedRequestSchema = z.object({
   request_id: z.string().min(1),
   timestamp: z.string().datetime(),
   topic: z.string().min(1),
+  topic_focus: z.string().optional(),
   requested_output_type: OutputTypeSchema,
   explicit_audience: z.string().optional(),
   worksheet_header_name: z.string().optional(),
@@ -180,6 +181,7 @@ export const GenerationContextSchema = z.object({
   explicit_subdomain: z.string().optional(),
   topic_id: z.string().optional(),
   topic_source: z.enum(["ontology", "free_text"]).optional(),
+  topic_focus: z.string().optional(),
   worksheet_response_format: WorksheetResponseFormatSchema.optional(),
   worksheet_content_mode: WorksheetContentModeSchema.optional(),
   user_constraints: z.array(z.string()).optional()

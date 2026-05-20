@@ -57,7 +57,11 @@ describe("worksheet content modes", () => {
       {
         topic: "Test",
         requested_output_type: "worksheet",
-        lesson_plan: {} as never,
+        lesson_plan: {
+          lesson_blueprint: {
+            worksheet_blueprint: { exercises: [{ prompt: "a" }] }
+          }
+        } as never,
         learner_model: {} as never,
         output_requirements: [],
         output_contract: contract,
@@ -72,5 +76,50 @@ describe("worksheet content modes", () => {
 
     expect(invalid.valid).toBe(false);
     expect(invalid.issues.some((issue) => issue.includes("guided exercises"))).toBe(true);
+  });
+
+  it("accepts alternate exercise numbering formats", () => {
+    const contract = buildWorksheetOutputContract("auto", "full");
+    const valid = evaluateWorksheetContract(
+      [
+        "## Worksheet Title and Domain Placement",
+        "## Learner Orientation",
+        "## Core Definitions and Distinctions",
+        "## Guided Exercises",
+        "1) First exercise",
+        "2) Second exercise",
+        "3) Third exercise",
+        "## Observation / Application Tasks",
+        "1. Observe something",
+        "## Reflection Prompts",
+        "1. Reflect",
+        "## Self-Check",
+        "1. Check",
+        "## Capability Checkpoint",
+        "Done"
+      ].join("\n\n"),
+      {
+        topic: "Test",
+        requested_output_type: "worksheet",
+        lesson_plan: {
+          lesson_blueprint: {
+            worksheet_blueprint: {
+              exercises: [{ prompt: "a" }, { prompt: "b" }, { prompt: "c" }]
+            }
+          }
+        } as never,
+        learner_model: {} as never,
+        output_requirements: [],
+        output_contract: contract,
+        meta: {
+          guidance_used: [],
+          token_budget_chars: 0,
+          guidance_chars_used: 0,
+          authority_files_loaded: []
+        }
+      }
+    );
+
+    expect(valid.issues.filter((issue) => issue.includes("guided exercises"))).toEqual([]);
   });
 });

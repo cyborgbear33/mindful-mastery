@@ -11,7 +11,8 @@ import { inferLearnerModel } from "../learner-model/infer-learner-model";
 import { normalizeRequest } from "../normalization/normalize-request";
 import {
   buildDeterministicLessonPlan,
-  FakeLessonModelAdapter
+  FakeLessonModelAdapter,
+  renderWorksheetFromPlan
 } from "../planning/fake-lesson-adapter";
 import { GenerateModelInput, LessonModelAdapter, parseJsonFromModel } from "../planning/model-adapter";
 import { persistLessonArtifacts } from "../persistence/persist-lesson";
@@ -138,6 +139,25 @@ export class LessonPipeline {
           renderRepairSucceeded = true;
           break;
         }
+      }
+    }
+
+    if (!contractEval.valid) {
+      const contractIssues = [...contractEval.issues];
+      const fallbackWorksheet = renderWorksheetFromPlan(
+        lessonPlan,
+        learnerModel,
+        normalizedRequest.worksheet_content_mode
+      );
+      const fallbackEval = evaluateWorksheetContract(fallbackWorksheet, reasoningContext);
+      if (fallbackEval.valid) {
+        worksheet = fallbackWorksheet;
+        contractEval = fallbackEval;
+        renderRepairAttempted = true;
+        lessonPlan.quality_controls.inference_assumptions = [
+          ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+          `Deterministic worksheet render fallback used after contract issues: ${contractIssues.join("; ")}`
+        ];
       }
     }
 

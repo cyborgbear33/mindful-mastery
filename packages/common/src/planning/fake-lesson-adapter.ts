@@ -285,6 +285,7 @@ export const buildDeterministicLessonPlan = (
       explicit_subdomain: request.explicit_subdomain,
       topic_id: request.topic_id,
       topic_source: request.topic_source,
+      topic_focus: request.topic_focus,
       worksheet_response_format: request.worksheet_response_format,
       worksheet_content_mode: request.worksheet_content_mode,
       user_constraints: request.user_constraints
@@ -307,9 +308,13 @@ export const buildDeterministicLessonPlan = (
         }
       ],
       subdomain: request.explicit_subdomain,
-      placement_notes: request.explicit_subdomain
-        ? `Topic was scoped under subdomain ${request.explicit_subdomain}.`
-        : "Topic was provided without subdomain scoping."
+      placement_notes: request.topic_focus
+        ? `Topic focus "${request.topic_focus}" narrows content within ${
+            request.explicit_subdomain ?? request.explicit_domain ?? domain
+          }.`
+        : request.explicit_subdomain
+          ? `Lesson follows the full scope of subdomain ${request.explicit_subdomain} without a further topic focus.`
+          : `Lesson follows the full scope of the ${domain} domain without a further topic focus.`
     },
     lesson_blueprint: {
       orientation: {
@@ -385,6 +390,7 @@ export class FakeLessonModelAdapter extends LessonModelAdapter {
         request_id: request.request_id,
         timestamp: new Date().toISOString(),
         topic: request.topic,
+        topic_focus: request.topic_focus,
         requested_output_type: request.requested_output_type,
         explicit_audience: request.explicit_audience,
         worksheet_header_name: request.worksheet_header_name,

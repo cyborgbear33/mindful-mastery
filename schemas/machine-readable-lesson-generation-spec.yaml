@@ -130,6 +130,7 @@ object_definitions:
       - explicit_subdomain
       - topic_id
       - topic_source
+      - topic_focus
       - worksheet_response_format
       - worksheet_content_mode
       - user_constraints
