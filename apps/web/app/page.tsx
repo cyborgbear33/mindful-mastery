@@ -115,6 +115,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 const defaultWorksheetDateValue = (): string => new Date().toISOString().slice(0, 10);
 
+function RequiredMark() {
+  return (
+    <span style={{ color: "#f28b82", marginLeft: "0.15rem" }} aria-hidden="true">
+      *
+    </span>
+  );
+}
+
 function resolveSubdomainValue(
   input: string,
   options: OntologySubdomain[]
@@ -252,7 +260,7 @@ export default function HomePage() {
   const [worksheetHeaderDescription, setWorksheetHeaderDescription] = useState("");
   const [currentKnowledgeContext, setCurrentKnowledgeContext] = useState("");
   const [depth, setDepth] = useState<Depth>("standard");
-  const [domain, setDomain] = useState<DomainId>("self");
+  const [domain, setDomain] = useState<DomainId | "">("");
   const [subdomainInput, setSubdomainInput] = useState("");
   const [showSubdomainSuggestions, setShowSubdomainSuggestions] = useState(false);
   const [worksheetResponseFormat, setWorksheetResponseFormat] =
@@ -280,7 +288,7 @@ export default function HomePage() {
   );
 
   const subdomainOptions = useMemo(() => {
-    if (!ontology) return [];
+    if (!domain || !ontology) return [];
     return ontology.domains[domain]?.subdomains ?? [];
   }, [ontology, domain]);
 
@@ -332,6 +340,11 @@ export default function HomePage() {
     setError(null);
 
     const explicitSubdomain = resolveSubdomainValue(subdomainInput, subdomainOptions);
+    if (!domain) {
+      setError("Please select a domain.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch(`${API_URL}/lesson/generate`, {
@@ -344,7 +357,7 @@ export default function HomePage() {
           worksheet_header_name: worksheetHeaderName.trim() || undefined,
           worksheet_header_date: worksheetHeaderDate.trim() || undefined,
           worksheet_header_description: worksheetHeaderDescription.trim() || undefined,
-          explicit_domain: domain || undefined,
+          explicit_domain: domain,
           explicit_subdomain: explicitSubdomain,
           current_knowledge_context: currentKnowledgeContext || undefined,
           requested_depth: depth,
@@ -438,7 +451,7 @@ export default function HomePage() {
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
           <label>
-            Name (optional)
+            Name
             <input
               value={worksheetHeaderName}
               onChange={(e) => setWorksheetHeaderName(e.target.value)}
@@ -447,7 +460,7 @@ export default function HomePage() {
             />
           </label>
           <label>
-            Date (optional)
+            Date
             <input
               type="date"
               value={worksheetHeaderDate}
@@ -456,7 +469,7 @@ export default function HomePage() {
             />
           </label>
           <label>
-            Notes (optional)
+            Notes
             <input
               value={worksheetHeaderDescription}
               onChange={(e) => setWorksheetHeaderDescription(e.target.value)}
@@ -468,11 +481,16 @@ export default function HomePage() {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
           <label>
             Domain
+            <RequiredMark />
             <select
               value={domain}
               onChange={(e) => setDomain(e.target.value as DomainId)}
               style={inputStyle}
+              required
             >
+              <option value="" disabled>
+                Select a domain
+              </option>
               <option value="self">Self</option>
               <option value="trivium">Trivium</option>
               <option value="quadrivium">Quadrivium</option>
@@ -482,7 +500,7 @@ export default function HomePage() {
             </select>
           </label>
           <label style={{ position: "relative" }}>
-            Subdomain (optional)
+            Subdomain
             <input
               value={subdomainInput}
               onChange={(e) => {
@@ -525,6 +543,7 @@ export default function HomePage() {
           </label>
           <label>
             Topic
+            <RequiredMark />
             <input
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
@@ -653,7 +672,7 @@ export default function HomePage() {
           </select>
         </label>
         <label>
-          Current knowledge context (optional)
+          Current knowledge context
           <textarea
             value={currentKnowledgeContext}
             onChange={(e) => setCurrentKnowledgeContext(e.target.value)}
@@ -662,6 +681,9 @@ export default function HomePage() {
             placeholder="Example: I can use ratios in recipes but cannot model them formally."
           />
         </label>
+        <p style={{ color: "#9aa0a6", margin: 0, fontSize: "0.85rem" }}>
+          <span style={{ color: "#f28b82" }}>*</span> Required
+        </p>
         <button type="submit" disabled={loading} style={buttonStyle}>
           {loading
             ? "Generating…"
