@@ -1,0 +1,288 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlanteanacres.local/schemas/lesson-generation.schema.json",
+  "title": "Atlantean Learning Lesson Generation Schema",
+  "description": "Strict JSON Schema for validating machine-readable lesson generation payloads governed by the Constitution of Learning.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_metadata",
+    "constitutional_alignment",
+    "generation_context",
+    "student_model",
+    "topic_model",
+    "lesson_blueprint",
+    "quality_controls"
+  ],
+  "properties": {
+    "spec_metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec_version", "lesson_id", "created_at", "output_type"],
+      "properties": {
+        "spec_version": { "type": "string", "minLength": 1 },
+        "lesson_id": { "type": "string", "minLength": 1 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "output_type": {
+          "type": "string",
+          "enum": [
+            "lesson",
+            "lesson_series",
+            "unit",
+            "course_module",
+            "study_guide",
+            "manual_section",
+            "curriculum_segment",
+            "worksheet"
+          ]
+        },
+        "lineage": { "type": "string" },
+        "parent_request_id": { "type": "string" }
+      }
+    },
+    "constitutional_alignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary_domain", "adjacent_domains", "transformation_goal", "four_layer_integrity"],
+      "properties": {
+        "primary_domain": {
+          "type": "string",
+          "enum": [
+            "self",
+            "trivium",
+            "quadrivium",
+            "science_analysis",
+            "engineering_art_architecture_craftsmanship",
+            "integration_theory_of_all"
+          ]
+        },
+        "adjacent_domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "self",
+              "trivium",
+              "quadrivium",
+              "science_analysis",
+              "engineering_art_architecture_craftsmanship",
+              "integration_theory_of_all"
+            ]
+          },
+          "minItems": 0
+        },
+        "transformation_goal": { "type": "string", "minLength": 1 },
+        "four_layer_integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["principle_present", "form_present", "manifestation_present", "embodiment_present"],
+          "properties": {
+            "principle_present": { "type": "boolean" },
+            "form_present": { "type": "boolean" },
+            "manifestation_present": { "type": "boolean" },
+            "embodiment_present": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "generation_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["request_id", "topic", "requested_output_type", "requested_depth", "source_request_text"],
+      "properties": {
+        "request_id": { "type": "string", "minLength": 1 },
+        "topic": { "type": "string", "minLength": 1 },
+        "requested_output_type": {
+          "type": "string",
+          "enum": [
+            "lesson",
+            "lesson_series",
+            "unit",
+            "course_module",
+            "study_guide",
+            "manual_section",
+            "curriculum_segment",
+            "worksheet"
+          ]
+        },
+        "requested_depth": {
+          "type": "string",
+          "enum": ["introductory", "standard", "advanced"]
+        },
+        "source_request_text": { "type": "string", "minLength": 1 },
+        "explicit_audience": { "type": "string" },
+        "explicit_domain": { "type": "string" },
+        "user_constraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "student_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_state", "target_state", "transformation_goal", "confidence_of_inference"],
+      "properties": {
+        "current_state": { "type": "string", "minLength": 1 },
+        "target_state": { "type": "string", "minLength": 1 },
+        "transformation_goal": { "type": "string", "minLength": 1 },
+        "confidence_of_inference": {
+          "type": "string",
+          "enum": ["explicit", "inferred_conservative", "inferred_speculative"]
+        },
+        "confusions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "readiness_level": {
+          "type": "string",
+          "enum": ["novice", "intermediate", "advanced"]
+        }
+      }
+    },
+    "topic_model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "why_it_matters", "definitions", "distinctions"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "why_it_matters": { "type": "string", "minLength": 1 },
+        "definitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["term", "definition"],
+            "properties": {
+              "term": { "type": "string", "minLength": 1 },
+              "definition": { "type": "string", "minLength": 1 }
+            }
+          },
+          "minItems": 1
+        },
+        "distinctions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["term_a", "term_b", "distinction"],
+            "properties": {
+              "term_a": { "type": "string", "minLength": 1 },
+              "term_b": { "type": "string", "minLength": 1 },
+              "distinction": { "type": "string", "minLength": 1 }
+            }
+          },
+          "minItems": 1
+        },
+        "ontology_notes": { "type": "string" }
+      }
+    },
+    "lesson_blueprint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orientation",
+        "state_of_mind_framing",
+        "core_definitions_and_distinctions",
+        "theoretical_overview",
+        "abstract_or_formal_structure",
+        "real_manifestation",
+        "application_and_embodiment",
+        "integration",
+        "capability_statement",
+        "worksheet_blueprint"
+      ],
+      "properties": {
+        "orientation": { "$ref": "#/$defs/blueprint_section" },
+        "state_of_mind_framing": { "$ref": "#/$defs/blueprint_section" },
+        "core_definitions_and_distinctions": { "$ref": "#/$defs/blueprint_section" },
+        "theoretical_overview": { "$ref": "#/$defs/blueprint_section" },
+        "abstract_or_formal_structure": { "$ref": "#/$defs/blueprint_section" },
+        "real_manifestation": { "$ref": "#/$defs/blueprint_section" },
+        "application_and_embodiment": { "$ref": "#/$defs/blueprint_section" },
+        "integration": { "$ref": "#/$defs/blueprint_section" },
+        "capability_statement": { "$ref": "#/$defs/blueprint_section" },
+        "worksheet_blueprint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exercises",
+            "observation_tasks",
+            "reflection_prompts",
+            "self_check_items",
+            "capability_checkpoint"
+          ],
+          "properties": {
+            "exercises": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/worksheet_item" },
+              "minItems": 1
+            },
+            "observation_tasks": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/worksheet_item" },
+              "minItems": 1
+            },
+            "reflection_prompts": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/worksheet_item" },
+              "minItems": 1
+            },
+            "self_check_items": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/worksheet_item" },
+              "minItems": 1
+            },
+            "capability_checkpoint": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "quality_controls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_sections_present"],
+      "properties": {
+        "required_sections_present": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "inference_assumptions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "regeneration_notes": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "blueprint_section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "content"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "content": { "type": "string", "minLength": 1 },
+        "key_points": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "worksheet_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt", "purpose"],
+      "properties": {
+        "prompt": { "type": "string", "minLength": 1 },
+        "purpose": { "type": "string", "minLength": 1 },
+        "expected_response_hint": { "type": "string" }
+      }
+    }
+  }
+}

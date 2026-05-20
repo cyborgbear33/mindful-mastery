@@ -1,0 +1,166 @@
+{
+  "spec_metadata": {
+    "spec_version": "1.0.0",
+    "lesson_id": "golden-trivium-definition-distinction",
+    "created_at": "2026-05-20T12:00:00.000Z",
+    "output_type": "worksheet",
+    "lineage": "golden-example-pack/trivium-domain"
+  },
+  "constitutional_alignment": {
+    "primary_domain": "trivium",
+    "adjacent_domains": ["self", "integration_theory_of_all"],
+    "transformation_goal": "Move the learner from vague verbal familiarity to precise conceptual discrimination.",
+    "four_layer_integrity": {
+      "principle_present": true,
+      "form_present": true,
+      "manifestation_present": true,
+      "embodiment_present": true
+    }
+  },
+  "generation_context": {
+    "request_id": "req-golden-trivium-001",
+    "topic": "Definition and Distinction in Clear Thought",
+    "requested_output_type": "worksheet",
+    "requested_depth": "standard",
+    "source_request_text": "Create a student worksheet on definition and distinction for a learner who uses words vaguely.",
+    "explicit_audience": "High school or early college learner",
+    "explicit_domain": "trivium"
+  },
+  "student_model": {
+    "current_state": "Verbally vague, uses terms interchangeably, lacks precise conceptual discrimination, imitative rather than generative.",
+    "target_state": "Verbally precise, capable of defining terms and distinguishing nearby concepts clearly.",
+    "transformation_goal": "Move from vague verbal familiarity to precise conceptual discrimination.",
+    "confidence_of_inference": "explicit",
+    "confusions": [
+      "Treats synonyms as identical concepts",
+      "Uses definitions circularly"
+    ],
+    "strengths": ["Good vocabulary exposure", "Willing to revise statements"],
+    "readiness_level": "intermediate"
+  },
+  "topic_model": {
+    "title": "Definition and Distinction in Clear Thought",
+    "why_it_matters": "Without definitions and distinctions, language becomes mud, and thought sinks in it.",
+    "definitions": [
+      {
+        "term": "Definition",
+        "definition": "A statement that fixes the meaning of a term by genus and differentia or by essential characteristics."
+      },
+      {
+        "term": "Distinction",
+        "definition": "A clear separation between two concepts that are often confused or conflated."
+      }
+    ],
+    "distinctions": [
+      {
+        "term_a": "Definition",
+        "term_b": "Description",
+        "distinction": "A definition fixes essential meaning; a description lists observable features without fixing essence."
+      },
+      {
+        "term_a": "Distinction",
+        "term_b": "Opposition",
+        "distinction": "Distinction separates similar things; opposition marks contraries or negations."
+      }
+    ],
+    "ontology_notes": "Definition and distinction are foundational Trivium tools for ordered thought and communication."
+  },
+  "lesson_blueprint": {
+    "orientation": {
+      "title": "Orientation",
+      "content": "This lesson belongs to the Trivium domain. Definition and distinction are the primary tools for turning vague language into precise thought.",
+      "key_points": ["Trivium foundation", "Language precision enables logic"]
+    },
+    "state_of_mind_framing": {
+      "title": "State of Mind Framing",
+      "content": "The learner arrives with verbal familiarity but muddy concepts. The target is precise discrimination and definitional clarity.",
+      "key_points": ["From vague to precise", "From imitative to generative"]
+    },
+    "core_definitions_and_distinctions": {
+      "title": "Core Definitions and Distinctions",
+      "content": "Define 'definition' and 'distinction'. Distinguish definition from description and distinction from opposition.",
+      "key_points": ["Genus-differentia definition", "Essential vs accidental features"]
+    },
+    "theoretical_overview": {
+      "title": "Theoretical Overview",
+      "content": "Thought requires stable meanings. Definition fixes terms; distinction prevents conflation. Together they form the lexical foundation of reasoning.",
+      "key_points": ["Stable meanings enable reasoning", "Conflation produces error"]
+    },
+    "abstract_or_formal_structure": {
+      "title": "Abstract / Formal Structure",
+      "content": "Definition template: Term = genus + differentia. Distinction template: A is X; B is Y; A differs from B in Z.",
+      "key_points": ["Genus-differentia form", "A/B/Z distinction form"]
+    },
+    "real_manifestation": {
+      "title": "Real-World Manifestation",
+      "content": "Legal contracts, scientific papers, and technical manuals all depend on precise definitions. News articles often conflate correlation and causation due to missing distinctions.",
+      "key_points": ["Legal/scientific precision", "Media conflation examples"]
+    },
+    "application_and_embodiment": {
+      "title": "Application and Embodiment",
+      "content": "Define three terms used loosely in a recent conversation. Distinguish two concepts commonly confused in your field of study.",
+      "key_points": ["Define loose terms", "Distinguish confused pairs"]
+    },
+    "integration": {
+      "title": "Integration",
+      "content": "Definition and distinction serve Self (intellectual discipline), Trivium (language and logic), and all downstream domains that depend on precise thought.",
+      "key_points": ["Foundation for all domains", "Discipline of mind"]
+    },
+    "capability_statement": {
+      "title": "Capability Gained",
+      "content": "The learner can define terms using genus-differentia, distinguish commonly confused concepts, and detect vague language in arguments.",
+      "key_points": ["Define precisely", "Distinguish clearly", "Detect vagueness"]
+    },
+    "worksheet_blueprint": {
+      "exercises": [
+        {
+          "prompt": "Define 'justice' using genus and differentia.",
+          "purpose": "Practice formal definition structure",
+          "expected_response_hint": "Justice is a virtue whereby one renders to each what is due..."
+        },
+        {
+          "prompt": "Distinguish 'speed' from 'velocity' using the A/B/Z format.",
+          "purpose": "Practice formal distinction structure"
+        }
+      ],
+      "observation_tasks": [
+        {
+          "prompt": "Find one news headline that conflates two distinct concepts. Identify the missing distinction.",
+          "purpose": "Apply distinction to real discourse"
+        }
+      ],
+      "reflection_prompts": [
+        {
+          "prompt": "When have you used two different words to mean the same thing without checking whether they actually differ?",
+          "purpose": "Connect to personal vague-language habits"
+        }
+      ],
+      "self_check_items": [
+        {
+          "prompt": "Can you explain the difference between a definition and a description?",
+          "purpose": "Verify core distinction mastery"
+        },
+        {
+          "prompt": "Can you give an example of a circular definition and explain why it fails?",
+          "purpose": "Verify understanding of definition quality"
+        }
+      ],
+      "capability_checkpoint": "Define two terms from your current studies and distinguish them from two nearby concepts, using the formal templates."
+    }
+  },
+  "quality_controls": {
+    "required_sections_present": [
+      "orientation",
+      "state_of_mind_framing",
+      "core_definitions_and_distinctions",
+      "theoretical_overview",
+      "abstract_or_formal_structure",
+      "real_manifestation",
+      "application_and_embodiment",
+      "integration",
+      "capability_statement",
+      "worksheet_blueprint"
+    ],
+    "inference_assumptions": ["Learner has basic vocabulary but lacks formal definitional training"]
+  }
+}

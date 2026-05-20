@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Runtime persistence
+.data/
+
+# Logs and debug
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test and coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+ai-learning-linux-archive.zip

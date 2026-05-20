@@ -1,0 +1,172 @@
+{
+  "spec_metadata": {
+    "spec_version": "1.0.0",
+    "lesson_id": "golden-self-attention-gate-of-learning",
+    "created_at": "2026-05-20T12:00:00.000Z",
+    "output_type": "worksheet",
+    "lineage": "golden-example-pack/self-domain"
+  },
+  "constitutional_alignment": {
+    "primary_domain": "self",
+    "adjacent_domains": ["trivium", "integration_theory_of_all"],
+    "transformation_goal": "Move the learner from passive distraction to disciplined attentional self-governance.",
+    "four_layer_integrity": {
+      "principle_present": true,
+      "form_present": true,
+      "manifestation_present": true,
+      "embodiment_present": true
+    }
+  },
+  "generation_context": {
+    "request_id": "req-golden-self-001",
+    "topic": "Attention as the Gate of Learning",
+    "requested_output_type": "worksheet",
+    "requested_depth": "standard",
+    "source_request_text": "Create a student worksheet on attention as the gate of learning for a distracted novice learner.",
+    "explicit_audience": "Adult self-directed learner",
+    "explicit_domain": "self"
+  },
+  "student_model": {
+    "current_state": "Passive, easily distracted, lacks disciplined study habits, unable to sustain focus on demanding material.",
+    "target_state": "Attentive, disciplined, capable of governing mental focus toward chosen objects of study.",
+    "transformation_goal": "Move from passive distraction to disciplined attentional self-governance.",
+    "confidence_of_inference": "explicit",
+    "confusions": [
+      "Confuses stimulation with genuine engagement",
+      "Treats distraction as inevitable rather than governable"
+    ],
+    "strengths": ["Motivated to improve", "Recognizes the problem honestly"],
+    "readiness_level": "novice"
+  },
+  "topic_model": {
+    "title": "Attention as the Gate of Learning",
+    "why_it_matters": "No serious learning can occur without stable attention. Attention determines what enters the mind, what is retained, and what can be brought under judgment.",
+    "definitions": [
+      {
+        "term": "Attention",
+        "definition": "The directed governance of mental focus toward an object, task, or question."
+      },
+      {
+        "term": "Distraction",
+        "definition": "The loss or fragmentation of attention through competing stimuli or internal instability."
+      }
+    ],
+    "distinctions": [
+      {
+        "term_a": "Attention",
+        "term_b": "Entertainment",
+        "distinction": "Attention is directed and governed; entertainment is passive reception without deliberate focus."
+      },
+      {
+        "term_a": "Focus",
+        "term_b": "Obsession",
+        "distinction": "Focus is ordered concentration; obsession is fixation without judgment or proportion."
+      }
+    ],
+    "ontology_notes": "Attention is a faculty of the self that governs what the mind receives and retains."
+  },
+  "lesson_blueprint": {
+    "orientation": {
+      "title": "Orientation",
+      "content": "This lesson belongs to the Self domain, supported by Trivium (clarity of thought) and Integration (participation in ordered learning). Attention is the gate through which all other learning passes.",
+      "key_points": ["Self domain primary", "Attention precedes retention", "Gate metaphor is literal in function"]
+    },
+    "state_of_mind_framing": {
+      "title": "State of Mind Framing",
+      "content": "The learner likely arrives scattered and passive, expecting learning to happen without governing attention. The target is disciplined, self-directed focus.",
+      "key_points": ["From passive to active", "From scattered to focused"]
+    },
+    "core_definitions_and_distinctions": {
+      "title": "Core Definitions and Distinctions",
+      "content": "Attention is governed focus; distraction is its fragmentation. Distinguish attention from entertainment and focus from obsession.",
+      "key_points": ["Define attention precisely", "Distinguish nearby confusions"]
+    },
+    "theoretical_overview": {
+      "title": "Theoretical Overview",
+      "content": "Learning requires that the mind receive, retain, and judge. Attention is the governing faculty that selects what enters. Without it, the mind becomes a passive receiver of noise.",
+      "key_points": ["Attention governs intake", "Retention requires prior attention"]
+    },
+    "abstract_or_formal_structure": {
+      "title": "Abstract / Formal Structure",
+      "content": "Model attention as a gate: Input → Attention (filter/select) → Retention → Judgment → Action. Distraction bypasses or corrupts the gate.",
+      "key_points": ["Gate model", "Sequential dependency"]
+    },
+    "real_manifestation": {
+      "title": "Real-World Manifestation",
+      "content": "Notice how phone notifications, background conversation, and internal worry interrupt study. Observe how a single sustained reading session produces more retention than fragmented browsing.",
+      "key_points": ["Notifications interrupt gate", "Sustained sessions outperform fragmentation"]
+    },
+    "application_and_embodiment": {
+      "title": "Application and Embodiment",
+      "content": "Practice timed focus sessions, remove competing stimuli, and reflect on what breaks attention. Teach back the gate model to verify understanding.",
+      "key_points": ["Timed focus", "Stimulus removal", "Teach-back verification"]
+    },
+    "integration": {
+      "title": "Integration",
+      "content": "Attention supports Self through discipline, Trivium through clarity, Quadrivium through formal concentration, Science through observation, and Craft through careful making.",
+      "key_points": ["Cross-domain support", "Foundation for all learning"]
+    },
+    "capability_statement": {
+      "title": "Capability Gained",
+      "content": "The learner can identify attention loss, apply simple governance practices, and sustain focused study for defined intervals.",
+      "key_points": ["Identify distraction", "Apply governance", "Sustain focus intervals"]
+    },
+    "worksheet_blueprint": {
+      "exercises": [
+        {
+          "prompt": "Define attention in your own words without using the word 'focus'.",
+          "purpose": "Verify conceptual grasp of the core definition",
+          "expected_response_hint": "Should mention directed governance of mental focus toward an object"
+        },
+        {
+          "prompt": "Draw or describe the gate model: Input → Attention → Retention → Judgment → Action.",
+          "purpose": "Embody the abstract structure",
+          "expected_response_hint": "Sequential flow with attention as filter"
+        }
+      ],
+      "observation_tasks": [
+        {
+          "prompt": "During one 25-minute study session, note each time your attention breaks. Record the trigger.",
+          "purpose": "Ground theory in real manifestation",
+          "expected_response_hint": "Specific triggers: notification, thought, discomfort, etc."
+        }
+      ],
+      "reflection_prompts": [
+        {
+          "prompt": "What competes most strongly for your attention when you try to learn? Why?",
+          "purpose": "Connect personal experience to transformation goal"
+        },
+        {
+          "prompt": "How is entertainment different from attention in your daily habits?",
+          "purpose": "Apply key distinction"
+        }
+      ],
+      "self_check_items": [
+        {
+          "prompt": "Can you explain why attention is called the gate of learning?",
+          "purpose": "Verify why-it-matters framing"
+        },
+        {
+          "prompt": "Can you distinguish focus from obsession with an example?",
+          "purpose": "Verify distinction mastery"
+        }
+      ],
+      "capability_checkpoint": "Complete a 25-minute focused study session with no more than two attention breaks, and explain what governance practices you used."
+    }
+  },
+  "quality_controls": {
+    "required_sections_present": [
+      "orientation",
+      "state_of_mind_framing",
+      "core_definitions_and_distinctions",
+      "theoretical_overview",
+      "abstract_or_formal_structure",
+      "real_manifestation",
+      "application_and_embodiment",
+      "integration",
+      "capability_statement",
+      "worksheet_blueprint"
+    ],
+    "inference_assumptions": ["Learner is adult self-directed novice with smartphone distraction habits"]
+  }
+}

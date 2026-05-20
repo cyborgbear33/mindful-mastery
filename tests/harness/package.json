@@ -1,0 +1,16 @@
+{
+  "name": "@mindful-mastery/tests",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "echo \"No typecheck for harness\"",
+    "lint": "echo \"No lints for harness\"",
+    "build": "echo \"No build for harness\""
+  },
+  "devDependencies": {
+    "@mindful-mastery/common": "workspace:*",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
+  }
+}

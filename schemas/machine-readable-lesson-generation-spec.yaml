@@ -1,0 +1,153 @@
+spec_name: AtlanteanLearningLessonGenerationSpec
+spec_version: 1.0.0
+spec_kind: machine_readable_lesson_generation_spec
+purpose: >-
+  A machine-readable specification for AI systems that generate lessons,
+  courses, study guides, manuals, and educational documents under the
+  governing Constitution of Learning and its Implementation Doctrine.
+
+constitutional_basis:
+  document_name: Two-Part Learning Constitution System
+  governing_principles:
+    - learning_is_ordered_formation_of_understanding
+    - learner_is_part_of_the_learning_system
+    - state_of_mind_matters
+    - real_and_abstract_must_be_bound_together
+    - knowledge_must_be_ordered
+    - education_must_cultivate_capability
+    - truth_goodness_beauty_and_fitness_must_remain_joined
+  six_domains:
+    - self
+    - trivium
+    - quadrivium
+    - science_analysis
+    - engineering_art_architecture_craftsmanship
+    - integration_theory_of_all
+
+global_requirements:
+  must_model_student_mind_state: true
+  must_define_target_mind_state: true
+  must_place_lesson_in_domain_architecture: true
+  must_include_theoretical_overview: true
+  must_include_real_abstract_bridge: true
+  must_include_application_or_embodiment: true
+  must_include_capability_outcome: true
+  must_include_integration_with_greater_whole: true
+  must_preserve_ontological_clarity: true
+  must_preserve_epistemic_clarity: true
+  must_avoid_fragmentation: true
+  must_avoid_purely_decontextualized_content: true
+
+allowed_output_types:
+  - lesson
+  - lesson_series
+  - unit
+  - course_module
+  - study_guide
+  - manual_section
+  - curriculum_segment
+  - worksheet
+
+controlled_vocabularies:
+  domains:
+    self:
+      description: Identity, telos, virtue, discipline, peace, attention, moral formation.
+    trivium:
+      description: Language, logic, rhetoric, epistemology, meaning, truth, communication.
+    quadrivium:
+      description: Mathematics, metamathematics, formal systems, quantity, space, time, structure.
+    science_analysis:
+      description: Observation, measurement, classification, experimentation, modeling, analysis.
+    engineering_art_architecture_craftsmanship:
+      description: Design, making, beauty, function, material intelligence, precedent, embodiment.
+    integration_theory_of_all:
+      description: Ontology, metaphysics, systems, teleology, participation, synthesis.
+  depth_levels:
+    - introductory
+    - standard
+    - advanced
+  readiness_levels:
+    - novice
+    - intermediate
+    - advanced
+
+object_definitions:
+  spec_metadata:
+    required_fields:
+      - spec_version
+      - lesson_id
+      - created_at
+      - output_type
+    optional_fields:
+      - lineage
+      - parent_request_id
+
+  constitutional_alignment:
+    required_fields:
+      - primary_domain
+      - adjacent_domains
+      - transformation_goal
+      - four_layer_integrity
+    four_layer_integrity_fields:
+      - principle_present
+      - form_present
+      - manifestation_present
+      - embodiment_present
+
+  generation_context:
+    required_fields:
+      - request_id
+      - topic
+      - requested_output_type
+      - requested_depth
+      - source_request_text
+    optional_fields:
+      - explicit_audience
+      - explicit_domain
+      - user_constraints
+
+  student_model:
+    required_fields:
+      - current_state
+      - target_state
+      - transformation_goal
+      - confidence_of_inference
+    optional_fields:
+      - confusions
+      - strengths
+      - readiness_level
+
+  topic_model:
+    required_fields:
+      - title
+      - why_it_matters
+      - definitions
+      - distinctions
+    optional_fields:
+      - ontology_notes
+
+  lesson_blueprint:
+    layers:
+      - orientation
+      - state_of_mind_framing
+      - core_definitions_and_distinctions
+      - theoretical_overview
+      - abstract_or_formal_structure
+      - real_manifestation
+      - application_and_embodiment
+      - integration
+      - capability_statement
+    worksheet_blueprint:
+      required_fields:
+        - exercises
+        - observation_tasks
+        - reflection_prompts
+        - self_check_items
+        - capability_checkpoint
+
+  quality_controls:
+    required_fields:
+      - required_sections_present
+    optional_fields:
+      - inference_assumptions
+      - regeneration_notes
