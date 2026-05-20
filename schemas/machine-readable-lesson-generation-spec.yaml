@@ -1,5 +1,5 @@
 spec_name: AtlanteanLearningLessonGenerationSpec
-spec_version: 1.0.0
+spec_version: 1.1.0
 spec_kind: machine_readable_lesson_generation_spec
 purpose: >-
   A machine-readable specification for AI systems that generate lessons,
@@ -70,6 +70,15 @@ controlled_vocabularies:
     - novice
     - intermediate
     - advanced
+  worksheet_response_formats:
+    - auto
+    - open_ended
+    - fill_in
+    - multiple_choice
+    - true_false
+    - mixed
+    - quiz
+    - test
 
 object_definitions:
   spec_metadata:
@@ -88,6 +97,10 @@ object_definitions:
       - adjacent_domains
       - transformation_goal
       - four_layer_integrity
+    optional_fields:
+      - primary_subdomain
+      - topic_id
+      - topic_source
     four_layer_integrity_fields:
       - principle_present
       - form_present
@@ -104,12 +117,16 @@ object_definitions:
     optional_fields:
       - explicit_audience
       - explicit_domain
+      - explicit_subdomain
+      - topic_id
+      - topic_source
+      - worksheet_response_format
       - user_constraints
 
   student_model:
     required_fields:
-      - current_state
-      - target_state
+      - current_knowledge_context
+      - target_knowledge_context
       - transformation_goal
       - confidence_of_inference
     optional_fields:
@@ -124,12 +141,14 @@ object_definitions:
       - definitions
       - distinctions
     optional_fields:
+      - subdomain
+      - placement_notes
       - ontology_notes
 
   lesson_blueprint:
     layers:
       - orientation
-      - state_of_mind_framing
+      - knowledge_context_framing
       - core_definitions_and_distinctions
       - theoretical_overview
       - abstract_or_formal_structure
@@ -144,6 +163,10 @@ object_definitions:
         - reflection_prompts
         - self_check_items
         - capability_checkpoint
+      worksheet_item_optional_fields:
+        - response_format
+        - options
+        - acceptable_answers
 
   quality_controls:
     required_fields:

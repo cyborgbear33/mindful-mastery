@@ -10,6 +10,7 @@ describe("LessonService", () => {
       requested_output_type: "worksheet",
       explicit_domain: "quadrivium",
       requested_depth: "standard",
+      worksheet_response_format: "auto",
       user_constraints: []
     });
 

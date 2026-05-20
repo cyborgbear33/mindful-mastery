@@ -21,7 +21,8 @@ const WORKSHEET_OUTPUT_CONTRACT: WorksheetOutputContract = {
   required_sections: [...REQUIRED_WORKSHEET_SECTIONS],
   markdown_required: true,
   min_heading_count: 8,
-  min_output_requirement_coverage: 0.6
+  min_output_requirement_coverage: 0.6,
+  worksheet_response_format: "auto"
 };
 
 export type BuildPromptPackageInput = {
@@ -40,15 +41,21 @@ export type PromptPackage = {
   reasoningContext: ReasoningContext;
 };
 
-export const buildWorksheetOutputContract = (): WorksheetOutputContract =>
-  WORKSHEET_OUTPUT_CONTRACT;
+export const buildWorksheetOutputContract = (
+  worksheetResponseFormat: NormalizedRequest["worksheet_response_format"]
+): WorksheetOutputContract => ({
+  ...WORKSHEET_OUTPUT_CONTRACT,
+  worksheet_response_format: worksheetResponseFormat
+});
 
 export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackage => {
   const guidanceCharsUsed = input.guidanceSnippets.reduce(
     (sum, snippet) => sum + snippet.excerpt.length,
     0
   );
-  const outputContract = buildWorksheetOutputContract();
+  const outputContract = buildWorksheetOutputContract(
+    input.normalizedRequest.worksheet_response_format
+  );
 
   const reasoningContext: ReasoningContext = {
     topic: input.normalizedRequest.topic,
@@ -73,6 +80,7 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     `Topic: ${input.normalizedRequest.topic}`,
     `Output type: worksheet (student-facing Markdown)`,
     `Depth: ${input.normalizedRequest.requested_depth}`,
+    `Worksheet response format: ${input.normalizedRequest.worksheet_response_format}`,
     input.normalizedRequest.explicit_audience
       ? `Audience: ${input.normalizedRequest.explicit_audience}`
       : "",
@@ -195,6 +203,27 @@ export const evaluateWorksheetContract = (
   const echoDetected = worksheet.includes('"lesson_plan"') && worksheet.includes('"worksheet_blueprint"');
   if (echoDetected) {
     issues.push("Worksheet appears to echo raw JSON context instead of rendering prose.");
+  }
+
+  if (contract.worksheet_response_format !== "auto") {
+    if (
+      contract.worksheet_response_format === "multiple_choice" &&
+      !/\b[A-D]\)\s/m.test(worksheet)
+    ) {
+      issues.push("Worksheet response format requested multiple_choice, but A-D options were not detected.");
+    }
+    if (
+      contract.worksheet_response_format === "true_false" &&
+      !/\btrue\/false\b|\btrue or false\b/i.test(worksheet)
+    ) {
+      issues.push("Worksheet response format requested true_false, but true/false prompts were not detected.");
+    }
+    if (
+      contract.worksheet_response_format === "fill_in" &&
+      !/_{3,}/.test(worksheet)
+    ) {
+      issues.push("Worksheet response format requested fill_in, but blank markers were not detected.");
+    }
   }
 
   return {

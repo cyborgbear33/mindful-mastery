@@ -28,14 +28,36 @@ export const InferenceConfidenceSchema = z.enum([
   "inferred_speculative"
 ]);
 
+export const WorksheetResponseFormatSchema = z.enum([
+  "auto",
+  "open_ended",
+  "fill_in",
+  "multiple_choice",
+  "true_false",
+  "mixed",
+  "quiz",
+  "test"
+]);
+
+export const WorksheetItemResponseFormatSchema = z.enum([
+  "open_ended",
+  "fill_in",
+  "multiple_choice",
+  "true_false"
+]);
+
 export const LessonRequestSchema = z.object({
   topic: z.string().min(1),
   requested_output_type: OutputTypeSchema.default("worksheet"),
   explicit_audience: z.string().optional(),
   explicit_domain: LearningDomainSchema.optional(),
-  explicit_student_state: z.string().optional(),
-  explicit_target_state: z.string().optional(),
+  explicit_subdomain: z.string().optional(),
+  topic_id: z.string().optional(),
+  topic_source: z.enum(["ontology", "free_text"]).optional(),
+  current_knowledge_context: z.string().optional(),
+  target_knowledge_context: z.string().optional(),
   requested_depth: DepthLevelSchema.default("standard"),
+  worksheet_response_format: WorksheetResponseFormatSchema.default("auto"),
   user_constraints: z.array(z.string()).default([]),
   source_request_text: z.string().optional(),
   model_id: z.string().optional()
@@ -48,17 +70,21 @@ export const NormalizedRequestSchema = z.object({
   requested_output_type: OutputTypeSchema,
   explicit_audience: z.string().optional(),
   explicit_domain: LearningDomainSchema.optional(),
-  explicit_student_state: z.string().optional(),
-  explicit_target_state: z.string().optional(),
+  explicit_subdomain: z.string().optional(),
+  topic_id: z.string().optional(),
+  topic_source: z.enum(["ontology", "free_text"]).optional(),
+  current_knowledge_context: z.string().optional(),
+  target_knowledge_context: z.string().optional(),
   requested_depth: DepthLevelSchema,
+  worksheet_response_format: WorksheetResponseFormatSchema,
   user_constraints: z.array(z.string()),
   source_request_text: z.string().min(1),
   model_id: z.string().optional()
 });
 
 export const LearnerModelSchema = z.object({
-  current_state: z.string().min(1),
-  target_state: z.string().min(1),
+  current_knowledge_context: z.string().min(1),
+  target_knowledge_context: z.string().min(1),
   transformation_goal: z.string().min(1),
   confidence_of_inference: InferenceConfidenceSchema,
   confusions: z.array(z.string()).default([]),
@@ -86,6 +112,9 @@ export const BlueprintSectionSchema = z.object({
 export const WorksheetItemSchema = z.object({
   prompt: z.string().min(1),
   purpose: z.string().min(1),
+  response_format: WorksheetItemResponseFormatSchema.default("open_ended"),
+  options: z.array(z.string()).optional(),
+  acceptable_answers: z.array(z.string()).optional(),
   expected_response_hint: z.string().optional()
 });
 
@@ -115,8 +144,11 @@ export const SpecMetadataSchema = z.object({
 
 export const ConstitutionalAlignmentSchema = z.object({
   primary_domain: LearningDomainSchema,
+  primary_subdomain: z.string().optional(),
   adjacent_domains: z.array(LearningDomainSchema),
   transformation_goal: z.string().min(1),
+  topic_id: z.string().optional(),
+  topic_source: z.enum(["ontology", "free_text"]).optional(),
   four_layer_integrity: FourLayerIntegritySchema
 });
 
@@ -128,6 +160,10 @@ export const GenerationContextSchema = z.object({
   source_request_text: z.string().min(1),
   explicit_audience: z.string().optional(),
   explicit_domain: z.string().optional(),
+  explicit_subdomain: z.string().optional(),
+  topic_id: z.string().optional(),
+  topic_source: z.enum(["ontology", "free_text"]).optional(),
+  worksheet_response_format: WorksheetResponseFormatSchema.optional(),
   user_constraints: z.array(z.string()).optional()
 });
 
@@ -136,12 +172,14 @@ export const TopicModelSchema = z.object({
   why_it_matters: z.string().min(1),
   definitions: z.array(DefinitionSchema).min(1),
   distinctions: z.array(DistinctionSchema).min(1),
+  subdomain: z.string().optional(),
+  placement_notes: z.string().optional(),
   ontology_notes: z.string().optional()
 });
 
 export const LessonBlueprintSchema = z.object({
   orientation: BlueprintSectionSchema,
-  state_of_mind_framing: BlueprintSectionSchema,
+  knowledge_context_framing: BlueprintSectionSchema,
   core_definitions_and_distinctions: BlueprintSectionSchema,
   theoretical_overview: BlueprintSectionSchema,
   abstract_or_formal_structure: BlueprintSectionSchema,
@@ -172,7 +210,8 @@ export const WorksheetOutputContractSchema = z.object({
   required_sections: z.array(z.string()),
   markdown_required: z.boolean(),
   min_heading_count: z.number(),
-  min_output_requirement_coverage: z.number()
+  min_output_requirement_coverage: z.number(),
+  worksheet_response_format: WorksheetResponseFormatSchema.default("auto")
 });
 
 export const GuidanceSnippetSchema = z.object({

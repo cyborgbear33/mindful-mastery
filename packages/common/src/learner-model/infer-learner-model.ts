@@ -9,53 +9,53 @@ const DOMAIN_DEFAULTS: Record<
   { current: string; target: string; transformation: string }
 > = {
   self: {
-    current: "Scattered, lacking disciplined attention and moral seriousness about learning.",
-    target: "Attentive, disciplined, morally engaged with the learning process.",
-    transformation: "Move from scattered passivity to disciplined self-governance."
+    current: "Understands the language of self-governance but lacks stable execution habits in attention and discipline.",
+    target: "Can consistently apply attention and discipline practices to govern learning behavior.",
+    transformation: "Move from inconsistent self-governance knowledge to applied self-governance capability."
   },
   trivium: {
-    current: "Verbally vague, lacking precise definitions and distinctions.",
-    target: "Verbally precise, capable of clear definition and logical discrimination.",
-    transformation: "Move from vague verbal familiarity to precise conceptual discrimination."
+    current: "Recognizes key terms but cannot reliably produce precise definitions and distinctions.",
+    target: "Can define terms precisely and distinguish closely related concepts during reasoning.",
+    transformation: "Move from verbal familiarity to reliable definitional and logical precision."
   },
   quadrivium: {
-    current: "Procedurally competent but lacking structural mathematical insight.",
-    target: "Capable of seeing quantity and structure as intelligible relations.",
-    transformation: "Move from procedural arithmetic to structural mathematical insight."
+    current: "Can execute procedures but has fragmented understanding of mathematical structure and abstraction.",
+    target: "Can explain and apply mathematical structures across unfamiliar quantitative contexts.",
+    transformation: "Move from procedural execution to structural mathematical understanding."
   },
   science_analysis: {
-    current: "Mixes observation and inference carelessly, interpretively blurred.",
-    target: "Observationally rigorous, clear about what is seen vs inferred.",
-    transformation: "Move from interpretive blur to observational discipline."
+    current: "Collects observations but inconsistently separates observation, inference, and causal claims.",
+    target: "Can design observations and analyses with explicit evidence boundaries and causal caution.",
+    transformation: "Move from mixed evidence reasoning to disciplined analytical interpretation."
   },
   engineering_art_architecture_craftsmanship: {
-    current: "Appreciates results but lacks design reasoning and material intelligence.",
-    target: "Capable of design reasoning with attention to function, beauty, and material.",
-    transformation: "Move from passive appreciation to active design intelligence."
+    current: "Has practical exposure but incomplete understanding of design tradeoffs and material constraints.",
+    target: "Can reason through design decisions with explicit function, aesthetics, and material tradeoffs.",
+    transformation: "Move from ad hoc making to explicit design reasoning."
   },
   integration_theory_of_all: {
-    current: "Holds fragmented knowledge without synthesis or teleological order.",
-    target: "Capable of integrating parts into coherent wholes with purpose.",
-    transformation: "Move from fragmentation to integrative understanding."
+    current: "Knows isolated ideas from multiple domains but lacks a coherent integrative framework.",
+    target: "Can synthesize cross-domain concepts into a consistent explanatory architecture.",
+    transformation: "Move from fragmented domain knowledge to coherent integrative synthesis."
   }
 };
 
 export const inferLearnerModel = (request: NormalizedRequest): LearnerModel => {
   const hasExplicit =
-    Boolean(request.explicit_student_state) || Boolean(request.explicit_target_state);
+    Boolean(request.current_knowledge_context) || Boolean(request.target_knowledge_context);
 
   const domain = request.explicit_domain ?? "self";
   const defaults = DOMAIN_DEFAULTS[domain];
 
   return {
-    current_state:
-      request.explicit_student_state?.trim() ||
+    current_knowledge_context:
+      request.current_knowledge_context?.trim() ||
       defaults.current,
-    target_state:
-      request.explicit_target_state?.trim() ||
+    target_knowledge_context:
+      request.target_knowledge_context?.trim() ||
       defaults.target,
     transformation_goal: hasExplicit
-      ? `Move from ${request.explicit_student_state ?? "current state"} toward ${request.explicit_target_state ?? "target state"}.`
+      ? `Move from ${request.current_knowledge_context ?? "current knowledge context"} toward ${request.target_knowledge_context ?? "target knowledge context"}.`
       : defaults.transformation,
     confidence_of_inference: hasExplicit ? "explicit" : "inferred_conservative",
     confusions: hasExplicit

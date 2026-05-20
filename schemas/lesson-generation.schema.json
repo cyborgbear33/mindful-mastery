@@ -72,6 +72,12 @@
           "minItems": 0
         },
         "transformation_goal": { "type": "string", "minLength": 1 },
+        "primary_subdomain": { "type": "string" },
+        "topic_id": { "type": "string" },
+        "topic_source": {
+          "type": "string",
+          "enum": ["ontology", "free_text"]
+        },
         "four_layer_integrity": {
           "type": "object",
           "additionalProperties": false,
@@ -112,6 +118,25 @@
         "source_request_text": { "type": "string", "minLength": 1 },
         "explicit_audience": { "type": "string" },
         "explicit_domain": { "type": "string" },
+        "explicit_subdomain": { "type": "string" },
+        "topic_id": { "type": "string" },
+        "topic_source": {
+          "type": "string",
+          "enum": ["ontology", "free_text"]
+        },
+        "worksheet_response_format": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "open_ended",
+            "fill_in",
+            "multiple_choice",
+            "true_false",
+            "mixed",
+            "quiz",
+            "test"
+          ]
+        },
         "user_constraints": {
           "type": "array",
           "items": { "type": "string" }
@@ -121,10 +146,15 @@
     "student_model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["current_state", "target_state", "transformation_goal", "confidence_of_inference"],
+      "required": [
+        "current_knowledge_context",
+        "target_knowledge_context",
+        "transformation_goal",
+        "confidence_of_inference"
+      ],
       "properties": {
-        "current_state": { "type": "string", "minLength": 1 },
-        "target_state": { "type": "string", "minLength": 1 },
+        "current_knowledge_context": { "type": "string", "minLength": 1 },
+        "target_knowledge_context": { "type": "string", "minLength": 1 },
         "transformation_goal": { "type": "string", "minLength": 1 },
         "confidence_of_inference": {
           "type": "string",
@@ -178,6 +208,8 @@
           },
           "minItems": 1
         },
+        "subdomain": { "type": "string" },
+        "placement_notes": { "type": "string" },
         "ontology_notes": { "type": "string" }
       }
     },
@@ -186,7 +218,7 @@
       "additionalProperties": false,
       "required": [
         "orientation",
-        "state_of_mind_framing",
+        "knowledge_context_framing",
         "core_definitions_and_distinctions",
         "theoretical_overview",
         "abstract_or_formal_structure",
@@ -198,7 +230,7 @@
       ],
       "properties": {
         "orientation": { "$ref": "#/$defs/blueprint_section" },
-        "state_of_mind_framing": { "$ref": "#/$defs/blueprint_section" },
+        "knowledge_context_framing": { "$ref": "#/$defs/blueprint_section" },
         "core_definitions_and_distinctions": { "$ref": "#/$defs/blueprint_section" },
         "theoretical_overview": { "$ref": "#/$defs/blueprint_section" },
         "abstract_or_formal_structure": { "$ref": "#/$defs/blueprint_section" },
@@ -281,6 +313,18 @@
       "properties": {
         "prompt": { "type": "string", "minLength": 1 },
         "purpose": { "type": "string", "minLength": 1 },
+        "response_format": {
+          "type": "string",
+          "enum": ["open_ended", "fill_in", "multiple_choice", "true_false"]
+        },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "acceptable_answers": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "expected_response_hint": { "type": "string" }
       }
     }

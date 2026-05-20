@@ -217,7 +217,8 @@ export class LessonPipeline {
             required_sections: [],
             markdown_required: false,
             min_heading_count: 0,
-            min_output_requirement_coverage: 0
+            min_output_requirement_coverage: 0,
+            worksheet_response_format: "auto"
           },
           meta: {
             guidance_used: input.guidanceSnippets,
@@ -253,7 +254,21 @@ export class LessonPipeline {
       repairAttempted = true;
     }
 
-    throw new Error(`Lesson plan failed schema validation after repair: ${repairErrors?.join("; ")}`);
+    const fallbackPlan = buildDeterministicLessonPlan(
+      input.normalizedRequest,
+      input.learnerModel
+    );
+    fallbackPlan.quality_controls.inference_assumptions = [
+      ...(fallbackPlan.quality_controls.inference_assumptions ?? []),
+      `Fallback deterministic planner used due to planner output errors: ${
+        repairErrors?.join("; ") ?? "unknown schema/planner failure"
+      }`
+    ];
+    return {
+      lessonPlan: fallbackPlan,
+      repairAttempted: true,
+      repairSucceeded: false
+    };
   }
 }
 

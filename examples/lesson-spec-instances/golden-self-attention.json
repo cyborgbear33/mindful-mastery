@@ -27,8 +27,8 @@
     "explicit_domain": "self"
   },
   "student_model": {
-    "current_state": "Passive, easily distracted, lacks disciplined study habits, unable to sustain focus on demanding material.",
-    "target_state": "Attentive, disciplined, capable of governing mental focus toward chosen objects of study.",
+    "current_knowledge_context": "Passive, easily distracted, lacks disciplined study habits, unable to sustain focus on demanding material.",
+    "target_knowledge_context": "Attentive, disciplined, capable of governing mental focus toward chosen objects of study.",
     "transformation_goal": "Move from passive distraction to disciplined attentional self-governance.",
     "confidence_of_inference": "explicit",
     "confusions": [
@@ -71,7 +71,7 @@
       "content": "This lesson belongs to the Self domain, supported by Trivium (clarity of thought) and Integration (participation in ordered learning). Attention is the gate through which all other learning passes.",
       "key_points": ["Self domain primary", "Attention precedes retention", "Gate metaphor is literal in function"]
     },
-    "state_of_mind_framing": {
+    "knowledge_context_framing": {
       "title": "State of Mind Framing",
       "content": "The learner likely arrives scattered and passive, expecting learning to happen without governing attention. The target is disciplined, self-directed focus.",
       "key_points": ["From passive to active", "From scattered to focused"]
@@ -157,7 +157,7 @@
   "quality_controls": {
     "required_sections_present": [
       "orientation",
-      "state_of_mind_framing",
+      "knowledge_context_framing",
       "core_definitions_and_distinctions",
       "theoretical_overview",
       "abstract_or_formal_structure",

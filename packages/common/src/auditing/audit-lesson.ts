@@ -38,16 +38,22 @@ export const auditLesson = (input: {
         break;
       case "Student Current-State Modeling":
         score =
-          lessonPlan.student_model.current_state.length >= 30
+          lessonPlan.student_model.current_knowledge_context.length >= 30
             ? 3
-            : scoreFromContent(lessonPlan.student_model.current_state, ["state", "learner", "current"]);
+            : scoreFromContent(
+                lessonPlan.student_model.current_knowledge_context,
+                ["knowledge", "context", "current"]
+              );
         if (lessonPlan.student_model.confidence_of_inference === "explicit") score = Math.max(score, 3);
         break;
       case "Student Target-State Modeling":
         score =
-          lessonPlan.student_model.target_state.length >= 30
+          lessonPlan.student_model.target_knowledge_context.length >= 30
             ? 3
-            : scoreFromContent(lessonPlan.student_model.target_state, ["target", "capable", "precise"]);
+            : scoreFromContent(
+                lessonPlan.student_model.target_knowledge_context,
+                ["target", "knowledge", "capable"]
+              );
         if (lessonPlan.student_model.confidence_of_inference === "explicit") score = Math.max(score, 3);
         break;
       case "Transformation-of-Mind Goal":

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlanteanacres.local/schemas/domain-ontology.schema.json",
+  "title": "Atlantean Learning Domain Ontology Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["spec_name", "spec_version", "domains"],
+  "properties": {
+    "spec_name": { "type": "string", "minLength": 1 },
+    "spec_version": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "domains": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "self",
+        "trivium",
+        "quadrivium",
+        "science_analysis",
+        "engineering_art_architecture_craftsmanship",
+        "integration_theory_of_all"
+      ],
+      "properties": {
+        "self": { "$ref": "#/$defs/domainDefinition" },
+        "trivium": { "$ref": "#/$defs/domainDefinition" },
+        "quadrivium": { "$ref": "#/$defs/domainDefinition" },
+        "science_analysis": { "$ref": "#/$defs/domainDefinition" },
+        "engineering_art_architecture_craftsmanship": { "$ref": "#/$defs/domainDefinition" },
+        "integration_theory_of_all": { "$ref": "#/$defs/domainDefinition" }
+      }
+    }
+  },
+  "$defs": {
+    "domainDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "description", "min_required_subdomains", "subdomains"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "min_required_subdomains": { "type": "integer", "minimum": 1 },
+        "subdomains": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/subdomainDefinition" },
+          "minItems": 1
+        }
+      }
+    },
+    "subdomainDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "complexity_index",
+        "complexity_band",
+        "description",
+        "topics"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_\\-]+$" },
+        "label": { "type": "string", "minLength": 1 },
+        "complexity_index": { "type": "integer", "minimum": 1 },
+        "complexity_band": {
+          "type": "string",
+          "enum": ["foundational", "intermediate", "advanced"]
+        },
+        "description": { "type": "string", "minLength": 1 },
+        "topics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/topicDefinition" },
+          "minItems": 1
+        }
+      }
+    },
+    "topicDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "complexity_index"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1 },
+        "complexity_index": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

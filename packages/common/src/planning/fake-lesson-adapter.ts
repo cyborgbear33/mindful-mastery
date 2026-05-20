@@ -23,8 +23,8 @@ const renderWorksheetFromPlan = (
     lessonPlan.lesson_blueprint.orientation.content,
     "",
     "## Learner Orientation",
-    `**Current state:** ${learnerModel.current_state}`,
-    `**Target state:** ${learnerModel.target_state}`,
+    `**Current knowledge context:** ${learnerModel.current_knowledge_context}`,
+    `**Target knowledge context:** ${learnerModel.target_knowledge_context}`,
     `**Transformation:** ${learnerModel.transformation_goal}`,
     "",
     "## Core Definitions and Distinctions",
@@ -69,8 +69,11 @@ export const buildDeterministicLessonPlan = (
     },
     constitutional_alignment: {
       primary_domain: domain,
+      primary_subdomain: request.explicit_subdomain,
       adjacent_domains: domain === "self" ? ["trivium"] : ["self"],
       transformation_goal: learnerModel.transformation_goal,
+      topic_id: request.topic_id,
+      topic_source: request.topic_source ?? "free_text",
       four_layer_integrity: {
         principle_present: true,
         form_present: true,
@@ -86,6 +89,10 @@ export const buildDeterministicLessonPlan = (
       source_request_text: request.source_request_text,
       explicit_audience: request.explicit_audience,
       explicit_domain: request.explicit_domain,
+      explicit_subdomain: request.explicit_subdomain,
+      topic_id: request.topic_id,
+      topic_source: request.topic_source,
+      worksheet_response_format: request.worksheet_response_format,
       user_constraints: request.user_constraints
     },
     student_model: learnerModel,
@@ -104,16 +111,20 @@ export const buildDeterministicLessonPlan = (
           term_b: "Information",
           distinction: "Understanding is ordered formation; information is raw content without integration."
         }
-      ]
+      ],
+      subdomain: request.explicit_subdomain,
+      placement_notes: request.explicit_subdomain
+        ? `Topic was scoped under subdomain ${request.explicit_subdomain}.`
+        : "Topic was provided without subdomain scoping."
     },
     lesson_blueprint: {
       orientation: {
         title: "Orientation",
         content: `This lesson on ${request.topic} belongs primarily to the ${domain} domain.`
       },
-      state_of_mind_framing: {
-        title: "State of Mind Framing",
-        content: `From: ${learnerModel.current_state} Toward: ${learnerModel.target_state}`
+      knowledge_context_framing: {
+        title: "Knowledge Context Framing",
+        content: `From: ${learnerModel.current_knowledge_context} Toward: ${learnerModel.target_knowledge_context}`
       },
       core_definitions_and_distinctions: {
         title: "Core Definitions and Distinctions",
@@ -147,29 +158,34 @@ export const buildDeterministicLessonPlan = (
         exercises: [
           {
             prompt: `Explain ${request.topic} in your own words.`,
-            purpose: "Verify conceptual grasp"
+            purpose: "Verify conceptual grasp",
+            response_format: "open_ended"
           },
           {
             prompt: `Apply ${request.topic} to a concrete example from your experience.`,
-            purpose: "Embody understanding through use"
+            purpose: "Embody understanding through use",
+            response_format: "open_ended"
           }
         ],
         observation_tasks: [
           {
             prompt: `Observe one real instance of ${request.topic} in the next 24 hours. Record what you notice.`,
-            purpose: "Ground theory in reality"
+            purpose: "Ground theory in reality",
+            response_format: "open_ended"
           }
         ],
         reflection_prompts: [
           {
             prompt: `Why does ${request.topic} matter for your learning?`,
-            purpose: "Connect to why-it-matters framing"
+            purpose: "Connect to why-it-matters framing",
+            response_format: "open_ended"
           }
         ],
         self_check_items: [
           {
             prompt: `Can you define the key terms related to ${request.topic}?`,
-            purpose: "Verify definition mastery"
+            purpose: "Verify definition mastery",
+            response_format: "open_ended"
           }
         ],
         capability_checkpoint: `Demonstrate understanding of ${request.topic} by completing all exercises and explaining one real-world connection.`
@@ -178,7 +194,7 @@ export const buildDeterministicLessonPlan = (
     quality_controls: {
       required_sections_present: [
         "orientation",
-        "state_of_mind_framing",
+        "knowledge_context_framing",
         "core_definitions_and_distinctions",
         "theoretical_overview",
         "abstract_or_formal_structure",
@@ -207,7 +223,13 @@ export class FakeLessonModelAdapter extends LessonModelAdapter {
         requested_output_type: request.requested_output_type,
         explicit_audience: request.explicit_audience,
         explicit_domain: request.explicit_domain as NormalizedRequest["explicit_domain"],
+        explicit_subdomain: request.explicit_subdomain,
+        topic_id: request.topic_id,
+        topic_source: request.topic_source,
+        current_knowledge_context: input.reasoningContext.learner_model.current_knowledge_context,
+        target_knowledge_context: input.reasoningContext.learner_model.target_knowledge_context,
         requested_depth: request.requested_depth,
+        worksheet_response_format: request.worksheet_response_format ?? "auto",
         user_constraints: request.user_constraints ?? [],
         source_request_text: request.source_request_text
       };

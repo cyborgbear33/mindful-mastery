@@ -27,8 +27,8 @@
     "explicit_domain": "trivium"
   },
   "student_model": {
-    "current_state": "Verbally vague, uses terms interchangeably, lacks precise conceptual discrimination, imitative rather than generative.",
-    "target_state": "Verbally precise, capable of defining terms and distinguishing nearby concepts clearly.",
+    "current_knowledge_context": "Verbally vague, uses terms interchangeably, lacks precise conceptual discrimination, imitative rather than generative.",
+    "target_knowledge_context": "Verbally precise, capable of defining terms and distinguishing nearby concepts clearly.",
     "transformation_goal": "Move from vague verbal familiarity to precise conceptual discrimination.",
     "confidence_of_inference": "explicit",
     "confusions": [
@@ -71,7 +71,7 @@
       "content": "This lesson belongs to the Trivium domain. Definition and distinction are the primary tools for turning vague language into precise thought.",
       "key_points": ["Trivium foundation", "Language precision enables logic"]
     },
-    "state_of_mind_framing": {
+    "knowledge_context_framing": {
       "title": "State of Mind Framing",
       "content": "The learner arrives with verbal familiarity but muddy concepts. The target is precise discrimination and definitional clarity.",
       "key_points": ["From vague to precise", "From imitative to generative"]
@@ -151,7 +151,7 @@
   "quality_controls": {
     "required_sections_present": [
       "orientation",
-      "state_of_mind_framing",
+      "knowledge_context_framing",
       "core_definitions_and_distinctions",
       "theoretical_overview",
       "abstract_or_formal_structure",

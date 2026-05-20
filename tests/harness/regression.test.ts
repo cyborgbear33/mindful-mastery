@@ -17,8 +17,9 @@ describe("regression harness", () => {
       topic: golden.generation_context.topic,
       requested_output_type: "worksheet",
       explicit_domain: "self",
-      explicit_student_state: golden.student_model.current_state,
+      current_knowledge_context: golden.student_model.current_knowledge_context,
       requested_depth: "standard",
+      worksheet_response_format: "auto",
       user_constraints: []
     });
 
