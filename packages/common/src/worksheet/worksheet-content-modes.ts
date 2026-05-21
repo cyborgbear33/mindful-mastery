@@ -25,7 +25,7 @@ export type WorksheetModeDefinition = {
 };
 
 const FULL_PRACTICE_MINIMUMS: WorksheetPracticeMinimums = {
-  exercises: 3,
+  exercises: 6,
   applied_scenarios: 0,
   observation_tasks: 2,
   reflection_prompts: 2,

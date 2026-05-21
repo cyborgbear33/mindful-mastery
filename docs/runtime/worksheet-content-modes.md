@@ -37,7 +37,7 @@ Required rendered sections:
 - Capability Checkpoint
 
 Practice minimums at standard depth:
-- 3 guided exercises
+- 6 guided exercises
 - 2 observation tasks
 - 2 reflection prompts
 - 2 self-check items

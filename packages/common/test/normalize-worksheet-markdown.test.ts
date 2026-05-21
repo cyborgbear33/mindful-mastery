@@ -37,4 +37,26 @@ describe("normalizeRenderedWorksheet", () => {
     const raw = "# Title — Practice\n\n## Section\n\n1. Item";
     expect(normalizeRenderedWorksheet(raw)).toBe(raw);
   });
+
+  it("normalizes latex parenthesis and bracket delimiters for markdown math renderers", () => {
+    const raw = [
+      "# Algebra Practice",
+      "",
+      "Inline: \\(x^2 + y^2 = z^2\\)",
+      "",
+      "Display:",
+      "\\[\\int_0^1 x^2\\,dx = \\frac{1}{3}\\]"
+    ].join("\n");
+
+    expect(normalizeRenderedWorksheet(raw)).toBe(
+      [
+        "# Algebra Practice",
+        "",
+        "Inline: $x^2 + y^2 = z^2$",
+        "",
+        "Display:",
+        "$$\\int_0^1 x^2\\,dx = \\frac{1}{3}$$"
+      ].join("\n")
+    );
+  });
 });

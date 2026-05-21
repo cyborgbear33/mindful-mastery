@@ -1,3 +1,8 @@
+const normalizeLatexDelimiters = (text: string): string =>
+  text
+    .replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_match, content: string) => `$$${content.trim()}$$`)
+    .replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, (_match, content: string) => `$${content.trim()}$`);
+
 export const normalizeRenderedWorksheet = (raw: string): string => {
   let text = raw.trim();
   if (!text) return text;
@@ -14,5 +19,5 @@ export const normalizeRenderedWorksheet = (raw: string): string => {
     text = text.slice(commentaryMatch[0].length).trimStart();
   }
 
-  return text.trim();
+  return normalizeLatexDelimiters(text).trim();
 };

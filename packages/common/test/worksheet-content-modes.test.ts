@@ -15,6 +15,7 @@ import {
 
 describe("worksheet content modes", () => {
   it("defines teacher-friendly mode metadata", () => {
+    expect(getWorksheetModeDefinition("full").practice_minimums.exercises).toBe(6);
     expect(getWorksheetModeDefinition("practice_only").practice_minimums.exercises).toBe(12);
     expect(getWorksheetModeDefinition("information_only").omit_practice_sections).toBe(true);
     expect(PRACTICE_PROBLEM_ANGLES.length).toBeGreaterThanOrEqual(10);
@@ -131,6 +132,9 @@ describe("worksheet content modes", () => {
         "1) First exercise",
         "2) Second exercise",
         "3) Third exercise",
+        "4) Fourth exercise",
+        "5) Fifth exercise",
+        "6) Sixth exercise",
         "## Observation / Application Tasks",
         "1. Observe something",
         "## Reflection Prompts",
@@ -149,7 +153,10 @@ describe("worksheet content modes", () => {
               exercises: [
                 { prompt: "a", purpose: "b" },
                 { prompt: "c", purpose: "d" },
-                { prompt: "e", purpose: "f" }
+                { prompt: "e", purpose: "f" },
+                { prompt: "g", purpose: "h" },
+                { prompt: "i", purpose: "j" },
+                { prompt: "k", purpose: "l" }
               ]
             }
           }
