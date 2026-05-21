@@ -48,16 +48,16 @@ const buildWorkbookProblems = (
 
   const templates = mathLike
     ? [
-        `Compute and simplify: (3/4) + (5/8). Show every step and write the result as a mixed number if needed.`,
-        `Solve for x: 5x - 12 = 33. Check your answer by substitution.`,
+        `Compute and simplify: $\\frac{3}{4} + \\frac{5}{8}$. Show every step and write the result as a mixed number if needed.`,
+        `Solve for $x$: $5x - 12 = 33$. Check your answer by substitution.`,
         `Find the area and perimeter of a rectangle with length 12 cm and width 7 cm.`,
-        `Write and solve a proportion: 4 notebooks cost $10. How much do 9 notebooks cost?`,
-        `Factor completely: x^2 + 7x + 12.`,
+        `Write and solve a proportion: 4 notebooks cost \\$10. How much do 9 notebooks cost?`,
+        `Factor completely: $x^2 + 7x + 12$.`,
         `A train travels 180 km in 2.5 hours. Find the average speed in km/h.`,
-        `A store gives a 15% discount on a $48 item. What is the sale price and how much is saved?`,
+        `A store gives a 15\\% discount on a \\$48 item. What is the sale price and how much is saved?`,
         `Convert 2.75 hours to minutes, then convert 165 minutes back to hours and minutes.`,
-        `Simplify: (2x^2y^3)(3xy^2).`,
-        `Find the slope of the line through points (2, 5) and (8, 17).`
+        `Simplify: $(2x^2y^3)(3xy^2)$.`,
+        `Find the slope of the line through points $(2, 5)$ and $(8, 17)$.`
       ]
     : languageLike
       ? [
@@ -319,7 +319,10 @@ const renderPracticeOnlyWorksheet = (
   ];
   const workbookProblems = buildWorkbookProblems(
     lessonPlan.topic_model.title,
-    Math.max(4, Math.min(8, Math.floor(wb.exercises.length / 2))),
+    Math.min(
+      wb.exercises.length + 2,
+      Math.max(10, Math.min(14, Math.floor(wb.exercises.length / 2) + 6))
+    ),
     lessonPlan.constitutional_alignment.primary_domain,
     lessonPlan.constitutional_alignment.primary_subdomain
   );

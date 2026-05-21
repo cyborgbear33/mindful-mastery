@@ -50,7 +50,7 @@ describe("worksheet content modes", () => {
     expect(response.worksheet).not.toContain("## Worksheet Title");
     expect(response.worksheet.toLowerCase()).toContain("applied scenarios");
     expect(response.worksheet.toLowerCase()).toContain("pencil-and-paper workbook problems");
-    expect(response.worksheet).toContain("Solve for x");
+    expect(response.worksheet).toContain("Solve for $x$");
     expect(response.worksheet).toContain("area and perimeter");
     expect(response.worksheet.toLowerCase()).toContain("problem type key");
     expect(response.worksheet).not.toContain("definition_recall");
