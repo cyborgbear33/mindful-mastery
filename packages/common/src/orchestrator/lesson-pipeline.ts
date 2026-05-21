@@ -57,30 +57,48 @@ export class LessonPipeline {
   async generate(input: LessonRequest): Promise<GenerateLessonResponse> {
     const normalizedRequest = normalizeRequest(input);
     const learnerModel = inferLearnerModel(normalizedRequest);
-    const { snippets, filesLoaded } = await loadGuidanceSnippets(this.tokenBudgetChars, this.repoRoot);
+    const useFastPracticeOnlyPath =
+      normalizedRequest.requested_output_type === "worksheet" &&
+      normalizedRequest.worksheet_content_mode === "practice_only";
+
+    const { snippets, filesLoaded } = useFastPracticeOnlyPath
+      ? { snippets: [], filesLoaded: [] }
+      : await loadGuidanceSnippets(this.tokenBudgetChars, this.repoRoot);
 
     let systemPrompt = "";
     let developerPrompt = "";
-    try {
-      systemPrompt = await loadPromptAsset(
-        "prompts/system/constitution-bound-lesson-architect.system.md",
-        this.repoRoot
-      );
-      developerPrompt = await loadPromptAsset(
-        "prompts/developer/lesson-generation.developer.md",
-        this.repoRoot
-      );
-    } catch {
-      systemPrompt = "You are a constitution-bound lesson architect.";
-      developerPrompt = "Build and render governed lesson artifacts.";
+    if (!useFastPracticeOnlyPath) {
+      try {
+        systemPrompt = await loadPromptAsset(
+          "prompts/system/constitution-bound-lesson-architect.system.md",
+          this.repoRoot
+        );
+        developerPrompt = await loadPromptAsset(
+          "prompts/developer/lesson-generation.developer.md",
+          this.repoRoot
+        );
+      } catch {
+        systemPrompt = "You are a constitution-bound lesson architect.";
+        developerPrompt = "Build and render governed lesson artifacts.";
+      }
     }
 
     let lessonPlan: LessonPlanObject;
     let schemaRepairAttempted = false;
     let schemaRepairSucceeded = false;
 
-    if (this.useDeterministicPlan || this.modelAdapter instanceof FakeLessonModelAdapter) {
+    if (
+      useFastPracticeOnlyPath ||
+      this.useDeterministicPlan ||
+      this.modelAdapter instanceof FakeLessonModelAdapter
+    ) {
       lessonPlan = buildDeterministicLessonPlan(normalizedRequest, learnerModel);
+      if (useFastPracticeOnlyPath) {
+        lessonPlan.quality_controls.inference_assumptions = [
+          ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+          "Fast practice-only path used deterministic planning for lower latency."
+        ];
+      }
     } else {
       const planResult = await this.planWithRepair({
         normalizedRequest,
@@ -114,18 +132,7 @@ export class LessonPipeline {
     let renderRepairAttempted = false;
     let renderRepairSucceeded = false;
     let worksheet: string;
-    try {
-      worksheet = normalizeRenderedWorksheet(
-        await this.modelAdapter.generate({
-          llmPrompt,
-          reasoningContext,
-          modelId: normalizedRequest.model_id,
-          stage: "render"
-        })
-      );
-    } catch (error) {
-      renderRepairAttempted = true;
-      const message = error instanceof Error ? error.message : String(error);
+    if (useFastPracticeOnlyPath) {
       worksheet = renderWorksheetFromPlan(
         lessonPlan,
         learnerModel,
@@ -133,13 +140,36 @@ export class LessonPipeline {
       );
       lessonPlan.quality_controls.inference_assumptions = [
         ...(lessonPlan.quality_controls.inference_assumptions ?? []),
-        `Render model call failed; used deterministic render fallback: ${message}`
+        "Fast practice-only path used deterministic rendering for lower latency."
       ];
+    } else {
+      try {
+        worksheet = normalizeRenderedWorksheet(
+          await this.modelAdapter.generate({
+            llmPrompt,
+            reasoningContext,
+            modelId: normalizedRequest.model_id,
+            stage: "render"
+          })
+        );
+      } catch (error) {
+        renderRepairAttempted = true;
+        const message = error instanceof Error ? error.message : String(error);
+        worksheet = renderWorksheetFromPlan(
+          lessonPlan,
+          learnerModel,
+          normalizedRequest.worksheet_content_mode
+        );
+        lessonPlan.quality_controls.inference_assumptions = [
+          ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+          `Render model call failed; used deterministic render fallback: ${message}`
+        ];
+      }
     }
 
     let contractEval = evaluateWorksheetContract(worksheet, reasoningContext);
 
-    if (!contractEval.valid) {
+    if (!contractEval.valid && !useFastPracticeOnlyPath) {
       for (let attempt = 0; attempt < this.maxRenderRepairAttempts; attempt += 1) {
         renderRepairAttempted = true;
         const repairPrompt = buildRepairPrompt({

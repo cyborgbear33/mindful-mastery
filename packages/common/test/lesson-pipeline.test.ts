@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { LessonPipeline } from "../src/orchestrator/lesson-pipeline";
+import { LessonModelAdapter, type GenerateModelInput } from "../src/planning/model-adapter";
 import { validateLessonPlan } from "../src/validation/schema-validator";
 import { LessonPlanObjectSchema } from "../src/lesson-types";
 
@@ -55,5 +57,35 @@ describe("buildPromptPackage", () => {
     expect(response.llm_prompt.length).toBeGreaterThan(100);
     expect(response.reasoning_context.output_contract.required_sections.length).toBeGreaterThan(0);
     expect(response.reasoning_context.lesson_plan.spec_metadata.lesson_id).toBeTruthy();
+  });
+});
+
+describe("practice-only fast path", () => {
+  it("skips model calls for practice_only worksheet generation", async () => {
+    class CountingAdapter extends LessonModelAdapter {
+      callCount = 0;
+
+      async generate(_input: GenerateModelInput): Promise<string> {
+        this.callCount += 1;
+        throw new Error("Model should not be called in fast practice-only path");
+      }
+    }
+
+    const adapter = new CountingAdapter();
+    const pipeline = new LessonPipeline(adapter, { useDeterministicPlan: false });
+
+    const response = await pipeline.generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(adapter.callCount).toBe(0);
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
+    expect(response.worksheet).toContain("Pencil-and-Paper Workbook Problems");
   });
 });
