@@ -153,118 +153,6 @@ function resolveSubdomainValue(
   return trimmed;
 }
 
-function createPdfExportElement(source: HTMLElement): HTMLElement {
-  const wrapper = document.createElement("div");
-  wrapper.innerHTML = source.innerHTML;
-
-  Object.assign(wrapper.style, {
-    color: "#000000",
-    backgroundColor: "#ffffff",
-    padding: "32px",
-    fontFamily: "Georgia, 'Times New Roman', Times, serif",
-    fontSize: "11pt",
-    lineHeight: "1.55",
-    boxSizing: "border-box",
-    position: "fixed",
-    left: "-10000px",
-    top: "0",
-    width: "794px"
-  });
-
-  wrapper.querySelectorAll("*").forEach((node) => {
-    const el = node as HTMLElement;
-    el.style.color = "#000000";
-
-    switch (el.tagName) {
-      case "H1":
-        el.style.fontSize = "20pt";
-        el.style.fontWeight = "700";
-        el.style.marginTop = "0";
-        el.style.marginBottom = "12pt";
-        break;
-      case "H2":
-        el.style.fontSize = "16pt";
-        el.style.fontWeight = "700";
-        el.style.marginTop = "18pt";
-        el.style.marginBottom = "8pt";
-        break;
-      case "H3":
-        el.style.fontSize = "13pt";
-        el.style.fontWeight = "700";
-        el.style.marginTop = "14pt";
-        el.style.marginBottom = "6pt";
-        break;
-      case "P":
-        el.style.marginTop = "0";
-        el.style.marginBottom = "10pt";
-        break;
-      case "PRE":
-        el.style.backgroundColor = "#f4f4f4";
-        el.style.border = "1px solid #cccccc";
-        el.style.padding = "8pt";
-        el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
-        el.style.fontSize = "9pt";
-        el.style.whiteSpace = "pre-wrap";
-        break;
-      case "CODE":
-        if (el.parentElement?.tagName !== "PRE") {
-          el.style.backgroundColor = "#f4f4f4";
-          el.style.padding = "1px 4px";
-          el.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, monospace";
-          el.style.fontSize = "10pt";
-        }
-        break;
-      case "A":
-        el.style.color = "#0000cc";
-        el.style.textDecoration = "underline";
-        break;
-      case "STRONG":
-        el.style.fontWeight = "700";
-        break;
-      case "HR":
-        el.style.border = "none";
-        el.style.borderTop = "1px solid #cccccc";
-        el.style.margin = "16pt 0";
-        break;
-      case "TABLE":
-        el.style.borderCollapse = "collapse";
-        el.style.width = "100%";
-        el.style.marginBottom = "12pt";
-        break;
-      case "TH":
-        el.style.border = "1px solid #cccccc";
-        el.style.padding = "6pt 8pt";
-        el.style.textAlign = "left";
-        el.style.backgroundColor = "#f0f0f0";
-        el.style.fontWeight = "700";
-        break;
-      case "TD":
-        el.style.border = "1px solid #cccccc";
-        el.style.padding = "6pt 8pt";
-        el.style.textAlign = "left";
-        break;
-      case "BLOCKQUOTE":
-        el.style.borderLeft = "3px solid #cccccc";
-        el.style.marginLeft = "0";
-        el.style.paddingLeft = "12pt";
-        el.style.color = "#222222";
-        break;
-      case "UL":
-      case "OL":
-        el.style.marginTop = "0";
-        el.style.marginBottom = "10pt";
-        el.style.paddingLeft = "24pt";
-        break;
-      case "LI":
-        el.style.marginBottom = "4pt";
-        break;
-    }
-  });
-
-  document.body.appendChild(wrapper);
-  return wrapper;
-}
-
 export default function HomePage() {
   const [topicFocus, setTopicFocus] = useState("");
   const [worksheetHeaderName, setWorksheetHeaderName] = useState("");
@@ -281,14 +169,13 @@ export default function HomePage() {
     useState<WorksheetContentMode>("full");
   const [ontology, setOntology] = useState<DomainOntology | null>(null);
   const [loading, setLoading] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
+  const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateLessonResponse | null>(null);
   const [tab, setTab] = useState<Tab>("worksheet");
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingPhaseIndex, setLoadingPhaseIndex] = useState(0);
-  const worksheetRef = useRef<HTMLElement>(null);
   const subdomainBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateAbortRef = useRef<AbortController | null>(null);
   const loadingStartedAtRef = useRef<number | null>(null);
@@ -387,12 +274,34 @@ export default function HomePage() {
   }, [loading, loadingPhases, worksheetContentMode]);
 
   useEffect(() => {
+    if (!showPrintPreview) {
+      document.body.classList.remove("print-preview-active");
+      return;
+    }
+
+    document.body.classList.add("print-preview-active");
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setShowPrintPreview(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.classList.remove("print-preview-active");
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [showPrintPreview]);
+
+  useEffect(() => {
     setSubdomainInput("");
     setShowSubdomainSuggestions(false);
   }, [domain]);
 
   useEffect(() => {
     return () => {
+      document.body.classList.remove("print-preview-active");
       if (subdomainBlurTimeout.current) {
         clearTimeout(subdomainBlurTimeout.current);
       }
@@ -407,6 +316,7 @@ export default function HomePage() {
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
     generateAbortRef.current?.abort();
+    setShowPrintPreview(false);
     const controller = new AbortController();
     generateAbortRef.current = controller;
     loadingStartedAtRef.current = Date.now();
@@ -490,35 +400,21 @@ export default function HomePage() {
     }
   };
 
-  const exportWorksheetPdf = async () => {
-    if (!worksheetRef.current || !result?.worksheet) return;
+  const openPrintPreview = () => {
+    if (!worksheetMarkdown) return;
+    setShowPrintPreview(true);
+  };
 
-    setExportingPdf(true);
-    const exportNode = createPdfExportElement(worksheetRef.current);
+  const closePrintPreview = () => {
+    setShowPrintPreview(false);
+  };
 
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const filename = `${result.normalized_request.topic.replace(/[^\w\s-]/g, "").trim() || "worksheet"}.pdf`;
-
-      await html2pdf()
-        .set({
-          margin: [12, 12, 12, 12],
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: "#ffffff" },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-        })
-        .from(exportNode)
-        .save();
-    } catch {
-      setError("PDF export failed. Try copying the markdown instead.");
-    } finally {
-      exportNode.remove();
-      setExportingPdf(false);
-    }
+  const printFromPreview = () => {
+    window.print();
   };
 
   return (
+    <>
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: "2rem 1.5rem" }}>
       <header style={{ marginBottom: "2rem" }}>
         <h1 style={{ margin: 0, fontSize: "1.75rem" }}>Mindful Mastery</h1>
@@ -866,14 +762,14 @@ export default function HomePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => exportWorksheetPdf()}
-                    disabled={exportingPdf}
+                    onClick={() => openPrintPreview()}
+                    disabled={!worksheetMarkdown}
                     style={secondaryButtonStyle}
                   >
-                    {exportingPdf ? "Exporting…" : "Export PDF"}
+                    Export PDF
                   </button>
                 </div>
-                <article ref={worksheetRef} className="worksheet" style={worksheetArticleStyle}>
+                <article className="worksheet" style={worksheetArticleStyle}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
@@ -944,6 +840,29 @@ export default function HomePage() {
         </section>
       )}
     </main>
+
+    {showPrintPreview && (
+      <div className="print-preview-overlay" role="dialog" aria-modal="true" aria-label="Print preview">
+        <div className="print-preview-toolbar">
+          <p>
+            This preview stays open until you close it. Choose <strong>Print / Save as PDF</strong>, then pick
+            &ldquo;Save as PDF&rdquo; in your browser&rsquo;s print dialog.
+          </p>
+          <button type="button" className="print-preview-primary" onClick={() => printFromPreview()}>
+            Print / Save as PDF
+          </button>
+          <button type="button" onClick={() => closePrintPreview()}>
+            Close
+          </button>
+        </div>
+        <article className="print-preview-page">
+          <ReactMarkdown remarkPlugins={[remarkGfm, remarkMath]} rehypePlugins={[rehypeKatex]}>
+            {worksheetMarkdown}
+          </ReactMarkdown>
+        </article>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -1051,9 +970,11 @@ const loadingOverlayStyle: React.CSSProperties = {
   background: "rgba(15, 17, 21, 0.72)",
   borderRadius: 8,
   display: "flex",
-  alignItems: "center",
+  alignItems: "flex-start",
   justifyContent: "center",
-  pointerEvents: "none"
+  paddingTop: "1rem",
+  pointerEvents: "none",
+  zIndex: 24
 };
 
 const loadingPanelStyle: React.CSSProperties = {
@@ -1062,7 +983,8 @@ const loadingPanelStyle: React.CSSProperties = {
   border: "1px solid #3a3f4b",
   borderRadius: 8,
   padding: "0.9rem 1rem",
-  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.28)"
+  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.28)",
+  color: "#e8eaed"
 };
 
 const loadingBarTrackStyle: React.CSSProperties = {
