@@ -88,4 +88,38 @@ describe("practice-only fast path", () => {
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
     expect(response.worksheet).toContain("Pencil-and-Paper Workbook Problems");
   });
+
+  it("uses planning call but skips render model call for information_only", async () => {
+    class CountingAdapter extends LessonModelAdapter {
+      planCalls = 0;
+      renderCalls = 0;
+
+      async generate(input: GenerateModelInput): Promise<string> {
+        if (input.stage === "plan") {
+          this.planCalls += 1;
+          return JSON.stringify(input.reasoningContext?.lesson_plan);
+        }
+        this.renderCalls += 1;
+        throw new Error("Render model call should be skipped for information_only fast path");
+      }
+    }
+
+    const adapter = new CountingAdapter();
+    const pipeline = new LessonPipeline(adapter, { useDeterministicPlan: false });
+
+    const response = await pipeline.generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "information_only",
+      user_constraints: []
+    });
+
+    expect(adapter.planCalls).toBe(1);
+    expect(adapter.renderCalls).toBe(0);
+    expect(response.worksheet.toLowerCase()).toContain("theoretical overview");
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
+  });
 });

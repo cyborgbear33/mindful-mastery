@@ -60,6 +60,9 @@ export class LessonPipeline {
     const useFastPracticeOnlyPath =
       normalizedRequest.requested_output_type === "worksheet" &&
       normalizedRequest.worksheet_content_mode === "practice_only";
+    const useFastInformationOnlyRenderPath =
+      normalizedRequest.requested_output_type === "worksheet" &&
+      normalizedRequest.worksheet_content_mode === "information_only";
 
     const { snippets, filesLoaded } = useFastPracticeOnlyPath
       ? { snippets: [], filesLoaded: [] }
@@ -142,6 +145,16 @@ export class LessonPipeline {
         ...(lessonPlan.quality_controls.inference_assumptions ?? []),
         "Fast practice-only path used deterministic rendering for lower latency."
       ];
+    } else if (useFastInformationOnlyRenderPath) {
+      worksheet = renderWorksheetFromPlan(
+        lessonPlan,
+        learnerModel,
+        normalizedRequest.worksheet_content_mode
+      );
+      lessonPlan.quality_controls.inference_assumptions = [
+        ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+        "Fast information-only path used deterministic rendering from planned lesson content."
+      ];
     } else {
       try {
         worksheet = normalizeRenderedWorksheet(
@@ -169,7 +182,7 @@ export class LessonPipeline {
 
     let contractEval = evaluateWorksheetContract(worksheet, reasoningContext);
 
-    if (!contractEval.valid && !useFastPracticeOnlyPath) {
+    if (!contractEval.valid && !useFastPracticeOnlyPath && !useFastInformationOnlyRenderPath) {
       for (let attempt = 0; attempt < this.maxRenderRepairAttempts; attempt += 1) {
         renderRepairAttempted = true;
         const repairPrompt = buildRepairPrompt({
