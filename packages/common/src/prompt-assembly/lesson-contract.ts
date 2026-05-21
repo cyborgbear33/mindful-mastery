@@ -6,10 +6,15 @@ import {
   OutputType,
   ReasoningContext,
   WorksheetContentMode,
+  WorksheetItem,
   WorksheetOutputContract
 } from "../lesson-types";
 import { buildPlacementContextLines } from "../normalization/normalize-request";
-import { getWorksheetModeDefinition } from "../worksheet/worksheet-content-modes";
+import {
+  formatPracticeAngleOntologyForPrompt,
+  listPracticeAngleLabels
+} from "../worksheet/practice-problem-ontology";
+import { getWorksheetModeDefinition, resolvePracticeMinimums } from "../worksheet/worksheet-content-modes";
 
 const BASE_OUTPUT_REQUIREMENTS = [
   "clear worksheet structure with markdown headings",
@@ -28,9 +33,11 @@ const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
   practice_only: [
     "render only practice-oriented sections — no long teaching exposition",
     "include a brief title and short learner orientation only",
-    "populate guided exercises heavily from worksheet_blueprint",
-    "include at least six guided exercises when depth is standard or advanced",
-    "include observation, reflection, self-check, and capability checkpoint sections",
+    "cover many distinct practice problem angles from the ontology — not six generic prompts",
+    "populate worksheet_blueprint with tagged practice_angle values on each item",
+    "split core skill drills (Guided Exercises) from multi-step work (Applied Scenarios)",
+    "include a Problem Types Covered section listing the angles practiced on this sheet",
+    "prioritize quantity, variety, and concrete use over exposition",
     "do not include core definitions, theoretical overview, or integration teaching sections"
   ],
   information_only: [
@@ -43,7 +50,7 @@ const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
 const MODE_RENDER_INSTRUCTIONS: Record<WorksheetContentMode, string> = {
   full: "Render a complete student worksheet with both lesson information and practice problems.",
   practice_only:
-    "Render a practice-focused worksheet. Keep orientation brief (2-4 lines). Prioritize quantity and variety of practice problems. Omit teaching-heavy sections.",
+    "Render a practice-heavy worksheet. Keep orientation brief (2-4 lines). Cover many problem types and solution angles. Use Guided Exercises for core drills and Applied Scenarios for multi-step or contextual work. Omit teaching-heavy sections.",
   information_only:
     "Render an information handout for teaching or reading. Include definitions, explanations, examples, and integration. Do not include any numbered practice prompts or blank answer spaces."
 };
@@ -66,9 +73,11 @@ export type PromptPackage = {
 
 export const buildWorksheetOutputContract = (
   worksheetResponseFormat: NormalizedRequest["worksheet_response_format"],
-  worksheetContentMode: NormalizedRequest["worksheet_content_mode"] = "full"
+  worksheetContentMode: NormalizedRequest["worksheet_content_mode"] = "full",
+  requestedDepth: NormalizedRequest["requested_depth"] = "standard"
 ): WorksheetOutputContract => {
   const modeDefinition = getWorksheetModeDefinition(worksheetContentMode);
+  const practiceMinimums = resolvePracticeMinimums(worksheetContentMode, requestedDepth);
 
   return {
     required_sections: [...modeDefinition.required_sections],
@@ -77,7 +86,7 @@ export const buildWorksheetOutputContract = (
     min_output_requirement_coverage: modeDefinition.min_output_requirement_coverage,
     worksheet_response_format: worksheetResponseFormat,
     worksheet_content_mode: worksheetContentMode,
-    practice_minimums: { ...modeDefinition.practice_minimums },
+    practice_minimums: practiceMinimums,
     omit_information_sections: modeDefinition.omit_information_sections,
     omit_practice_sections: modeDefinition.omit_practice_sections
   };
@@ -92,7 +101,8 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
   const modeDefinition = getWorksheetModeDefinition(contentMode);
   const outputContract = buildWorksheetOutputContract(
     input.normalizedRequest.worksheet_response_format,
-    contentMode
+    contentMode,
+    input.normalizedRequest.requested_depth
   );
 
   const reasoningContext: ReasoningContext = {
@@ -155,7 +165,14 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     ...MODE_OUTPUT_REQUIREMENTS[contentMode].map((req, index) => `${index + 1}) ${req}`),
     "",
     contentMode === "practice_only"
-      ? `Practice minimums: ${outputContract.practice_minimums.exercises} guided exercises, ${outputContract.practice_minimums.observation_tasks} observation tasks, ${outputContract.practice_minimums.reflection_prompts} reflection prompts, ${outputContract.practice_minimums.self_check_items} self-check items.`
+      ? [
+          `Practice minimums: ${outputContract.practice_minimums.exercises} guided exercises, ${outputContract.practice_minimums.applied_scenarios} applied scenarios, ${outputContract.practice_minimums.observation_tasks} observation tasks, ${outputContract.practice_minimums.self_check_items} self-check items, at least ${outputContract.practice_minimums.min_practice_angles} distinct practice angles.`,
+          "",
+          "Practice problem angle ontology (cover as many distinct angles as the minimum requires):",
+          formatPracticeAngleOntologyForPrompt(),
+          "",
+          "Tag each worksheet_blueprint item with practice_angle matching an ontology id. Render Problem Types Covered from those angles."
+        ].join("\n")
       : "",
     "",
     "Required worksheet sections (use Markdown ## headings that clearly match these):",
@@ -165,7 +182,9 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     "Render exercises from lesson_blueprint.worksheet_blueprint — do not invent generic filler.",
     "Use numbered lists for guided exercises (1. 2. 3.) under a ## Guided Exercises heading.",
     "Do not restate the JSON context verbatim. Produce a usable student worksheet.",
-    "Return only the final worksheet content in Markdown."
+    "Return only the final worksheet content in Markdown.",
+    "Never wrap the worksheet in markdown code fences.",
+    "Never add preamble commentary before the worksheet body."
   ]
     .filter(Boolean)
     .join("\n");
@@ -182,6 +201,10 @@ export const buildPlannerPrompt = (input: {
   repairErrors?: string[];
 }): string => {
   const modeDefinition = getWorksheetModeDefinition(input.normalizedRequest.worksheet_content_mode);
+  const practiceMinimums = resolvePracticeMinimums(
+    input.normalizedRequest.worksheet_content_mode,
+    input.normalizedRequest.requested_depth
+  );
 
   return [
     input.systemPrompt ?? "You are a constitution-bound lesson architect.",
@@ -203,12 +226,20 @@ export const buildPlannerPrompt = (input: {
     `Source request:\n${input.normalizedRequest.source_request_text}`,
     "",
     "Worksheet blueprint minimums for this mode:",
-    `- exercises: ${modeDefinition.practice_minimums.exercises}`,
-    `- observation_tasks: ${modeDefinition.practice_minimums.observation_tasks}`,
-    `- reflection_prompts: ${modeDefinition.practice_minimums.reflection_prompts}`,
-    `- self_check_items: ${modeDefinition.practice_minimums.self_check_items}`,
+    `- exercises: ${practiceMinimums.exercises}`,
+    `- applied_scenarios: ${practiceMinimums.applied_scenarios}`,
+    `- observation_tasks: ${practiceMinimums.observation_tasks}`,
+    `- reflection_prompts: ${practiceMinimums.reflection_prompts}`,
+    `- self_check_items: ${practiceMinimums.self_check_items}`,
+    `- min_practice_angles: ${practiceMinimums.min_practice_angles}`,
     modeDefinition.mode === "practice_only"
-      ? "For practice_only mode, still build the full lesson_blueprint layers internally, but make worksheet_blueprint especially rich with varied, concrete practice items."
+      ? [
+          "For practice_only mode, still build the full lesson_blueprint layers internally, but make worksheet_blueprint dense with varied, concrete practice items.",
+          "Each worksheet item must include practice_angle from the ontology. Use applied_scenarios for multi-step and contextual items.",
+          "",
+          "Practice problem angle ontology:",
+          formatPracticeAngleOntologyForPrompt()
+        ].join("\n")
       : "",
     modeDefinition.mode === "information_only"
       ? "For information_only mode, still include worksheet_blueprint in the JSON for schema compliance, but keep practice items minimal; teaching content belongs in lesson_blueprint layers."
@@ -271,6 +302,35 @@ const extractExerciseSection = (worksheet: string): string => {
   }
 
   return "";
+};
+
+const extractAppliedScenarioSection = (worksheet: string): string =>
+  extractSectionBody(worksheet, /^#{1,3}\s+.*applied scenarios.*$/im);
+
+const countProblemTypesListed = (worksheet: string): number => {
+  const body = extractSectionBody(worksheet, /^#{1,3}\s+.*problem types.*$/im);
+  return (body.match(/^\s*[-*]\s+\S/gm) ?? []).length;
+};
+
+const collectBlueprintPracticeItems = (reasoningContext: ReasoningContext): WorksheetItem[] => {
+  const blueprint = reasoningContext.lesson_plan.lesson_blueprint.worksheet_blueprint;
+  return [
+    ...blueprint.exercises,
+    ...(blueprint.applied_scenarios ?? []),
+    ...blueprint.observation_tasks,
+    ...blueprint.self_check_items
+  ];
+};
+
+const countBlueprintPracticeAngles = (reasoningContext: ReasoningContext): number => {
+  const angles = new Set(
+    collectBlueprintPracticeItems(reasoningContext)
+      .map((item) => item.practice_angle)
+      .filter((angle): angle is string => Boolean(angle))
+  );
+  if (angles.size > 0) return angles.size;
+
+  return listPracticeAngleLabels(collectBlueprintPracticeItems(reasoningContext)).length;
 };
 
 const extractSectionBody = (worksheet: string, headingPattern: RegExp): string => {
@@ -366,6 +426,40 @@ export const evaluateWorksheetContract = (
       issues.push(
         `Insufficient guided exercises (${exerciseCount} < ${contract.practice_minimums.exercises}).`
       );
+    }
+
+    if (contract.practice_minimums.applied_scenarios > 0) {
+      const appliedSection = extractAppliedScenarioSection(worksheet);
+      let appliedCount = countPracticeItems(appliedSection);
+      const blueprintApplied =
+        reasoningContext.lesson_plan.lesson_blueprint.worksheet_blueprint.applied_scenarios
+          ?.length ?? 0;
+
+      if (
+        appliedCount < contract.practice_minimums.applied_scenarios &&
+        appliedSection.trim() &&
+        blueprintApplied >= contract.practice_minimums.applied_scenarios
+      ) {
+        appliedCount = blueprintApplied;
+      }
+
+      if (appliedCount < contract.practice_minimums.applied_scenarios) {
+        issues.push(
+          `Insufficient applied scenarios (${appliedCount} < ${contract.practice_minimums.applied_scenarios}).`
+        );
+      }
+    }
+
+    if (contract.practice_minimums.min_practice_angles > 0) {
+      const listedAngles = countProblemTypesListed(worksheet);
+      const blueprintAngles = countBlueprintPracticeAngles(reasoningContext);
+      const angleCoverage = Math.max(listedAngles, blueprintAngles);
+
+      if (angleCoverage < contract.practice_minimums.min_practice_angles) {
+        issues.push(
+          `Insufficient practice angle coverage (${angleCoverage} < ${contract.practice_minimums.min_practice_angles}).`
+        );
+      }
     }
   }
 

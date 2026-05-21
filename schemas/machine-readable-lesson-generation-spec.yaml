@@ -175,8 +175,11 @@ object_definitions:
         - reflection_prompts
         - self_check_items
         - capability_checkpoint
+      optional_fields:
+        - applied_scenarios
       worksheet_item_optional_fields:
         - response_format
+        - practice_angle
         - options
         - acceptable_answers
 

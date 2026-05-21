@@ -33,7 +33,8 @@ describe("evaluateWorksheetContract", () => {
       worksheet_content_mode: "full",
       user_constraints: []
     });
-    expect(response.worksheet).toContain("Worksheet Title and Domain Placement");
+    expect(response.worksheet).toContain("## Worksheet Title");
+    expect(response.worksheet).toContain("— Worksheet");
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
     expect(response.audit_result.schema_pass).toBe(true);
   });

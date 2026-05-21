@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { normalizeWorksheetMarkdown } from "@/lib/normalize-worksheet-markdown";
 
 type Tab = "worksheet" | "plan" | "audit" | "prompt";
 type Depth = "introductory" | "standard" | "advanced";
@@ -46,7 +47,8 @@ const CONTENT_MODE_OPTIONS: ContentModeOption[] = [
   {
     id: "practice_only",
     label: "Practice Problems Only",
-    description: "Exercises and checks only — great for homework, review, or quiz prep.",
+    description:
+      "Dense, varied exercises across many problem types — great for homework, review, or quiz prep.",
     icon: "✏️"
   },
   {
@@ -284,6 +286,12 @@ export default function HomePage() {
   const [tab, setTab] = useState<Tab>("worksheet");
   const worksheetRef = useRef<HTMLElement>(null);
   const subdomainBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const generateAbortRef = useRef<AbortController | null>(null);
+
+  const worksheetMarkdown = useMemo(
+    () => (result?.worksheet ? normalizeWorksheetMarkdown(result.worksheet) : ""),
+    [result?.worksheet]
+  );
 
   const tabs: { id: Tab; label: string }[] = useMemo(
     () => [
@@ -339,11 +347,19 @@ export default function HomePage() {
       if (subdomainBlurTimeout.current) {
         clearTimeout(subdomainBlurTimeout.current);
       }
+      generateAbortRef.current?.abort();
     };
   }, []);
 
+  const stopGeneration = () => {
+    generateAbortRef.current?.abort();
+  };
+
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    generateAbortRef.current?.abort();
+    const controller = new AbortController();
+    generateAbortRef.current = controller;
     setLoading(true);
     setError(null);
 
@@ -358,6 +374,7 @@ export default function HomePage() {
       const response = await fetch(`${API_URL}/lesson/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           topic: topicFocus.trim() || undefined,
           topic_source: "free_text",
@@ -386,21 +403,31 @@ export default function HomePage() {
       setTab("worksheet");
       setCopyStatus("idle");
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       const message = err instanceof Error ? err.message : "Request failed";
+      const detail =
+        message === "Failed to fetch"
+          ? "Could not reach the lesson API. Restart it with pnpm dev:app if it stopped responding."
+          : message;
       setError(
-        `API unavailable or generation failed: ${message}. Ensure the API is running with CURSOR_API_KEY or use the fake adapter in tests.`
+        `API unavailable or generation failed: ${detail} Ensure the API is running with CURSOR_API_KEY or use the fake adapter in tests.`
       );
       setResult(null);
     } finally {
+      if (generateAbortRef.current === controller) {
+        generateAbortRef.current = null;
+      }
       setLoading(false);
     }
   };
 
   const copyWorksheetMarkdown = async () => {
-    if (!result?.worksheet) return;
+    if (!worksheetMarkdown) return;
 
     try {
-      await navigator.clipboard.writeText(result.worksheet);
+      await navigator.clipboard.writeText(worksheetMarkdown);
       setCopyStatus("copied");
       setTimeout(() => setCopyStatus("idle"), 2000);
     } catch {
@@ -509,6 +536,7 @@ export default function HomePage() {
           </label>
           <label style={{ position: "relative" }}>
             Subdomain
+            <RecommendedHint />
             <input
               value={subdomainInput}
               onChange={(e) => {
@@ -525,6 +553,9 @@ export default function HomePage() {
               style={inputStyle}
               autoComplete="off"
             />
+            <span style={{ display: "block", marginTop: "0.35rem", color: "#9aa0a6", fontSize: "0.85rem" }}>
+              Recommended scope within the selected domain.
+            </span>
             {showSubdomainSuggestions && subdomainOptions.length > 0 && (
               <div style={suggestionPanelStyle}>
                 {filteredSubdomainOptions.length === 0 && (
@@ -692,17 +723,25 @@ export default function HomePage() {
           />
         </label>
         <p style={{ color: "#9aa0a6", margin: 0, fontSize: "0.85rem" }}>
-          <span style={{ color: "#f28b82" }}>*</span> Required
+          <span style={{ color: "#f28b82" }}>*</span> Required ·{" "}
+          <span style={{ fontWeight: 400 }}>(recommended)</span> suggested for better placement
         </p>
-        <button type="submit" disabled={loading} style={buttonStyle}>
-          {loading
-            ? "Generating…"
-            : worksheetContentMode === "practice_only"
-              ? "Generate Practice Problems"
-              : worksheetContentMode === "information_only"
-                ? "Generate Lesson Information"
-                : "Generate Worksheet"}
-        </button>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button type="submit" disabled={loading} style={buttonStyle}>
+            {loading
+              ? "Generating…"
+              : worksheetContentMode === "practice_only"
+                ? "Generate Practice Problems"
+                : worksheetContentMode === "information_only"
+                  ? "Generate Lesson Information"
+                  : "Generate Worksheet"}
+          </button>
+          {loading && (
+            <button type="button" onClick={stopGeneration} style={stopButtonStyle}>
+              Stop
+            </button>
+          )}
+        </div>
       </form>
 
       {error && (
@@ -777,8 +816,8 @@ export default function HomePage() {
                     {exportingPdf ? "Exporting…" : "Export PDF"}
                   </button>
                 </div>
-                <article ref={worksheetRef} className="worksheet">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.worksheet}</ReactMarkdown>
+                <article ref={worksheetRef} className="worksheet" style={worksheetArticleStyle}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{worksheetMarkdown}</ReactMarkdown>
                 </article>
               </>
             )}
@@ -825,6 +864,10 @@ export default function HomePage() {
   );
 }
 
+const worksheetArticleStyle: React.CSSProperties = {
+  lineHeight: 1.6
+};
+
 const inputStyle: React.CSSProperties = {
   display: "block",
   width: "100%",
@@ -856,6 +899,18 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   fontWeight: 500,
   fontSize: "0.9rem"
+};
+
+const stopButtonStyle: React.CSSProperties = {
+  padding: "0.45rem 0.7rem",
+  background: "transparent",
+  color: "#f28b82",
+  border: "1px solid #5c3a3a",
+  borderRadius: 6,
+  cursor: "pointer",
+  fontWeight: 500,
+  fontSize: "0.82rem",
+  lineHeight: 1.2
 };
 
 const contentModeCardStyle: React.CSSProperties = {

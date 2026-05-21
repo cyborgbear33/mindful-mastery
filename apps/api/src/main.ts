@@ -10,6 +10,10 @@ const projectRoot = resolve(__dirname, "../../..");
 loadDotenv({ path: resolve(projectRoot, ".env"), override: true });
 
 const bootstrap = async (): Promise<void> => {
+  process.on("unhandledRejection", (reason) => {
+    console.error("Unhandled promise rejection in API process:", reason);
+  });
+
   const env = loadEnv(process.env);
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
   app.enableCors({ origin: true });

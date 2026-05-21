@@ -22,8 +22,12 @@ The planner must still build the full machine-readable lesson object internally.
 ### 1. `full` (default)
 Render both teaching information and practice.
 
+Title pattern:
+- `# {Title} — Worksheet`
+- `## Worksheet Title` with domain line
+
 Required rendered sections:
-- Worksheet Title and Domain Placement
+- Worksheet Title
 - Learner Orientation
 - Core Definitions and Distinctions
 - Guided Exercises
@@ -39,14 +43,17 @@ Practice minimums at standard depth:
 - 2 self-check items
 
 ### 2. `practice_only`
-Render a practice-heavy student artifact with minimal orientation.
+Render a dense practice artifact with minimal orientation and broad problem-type coverage.
+
+Title pattern:
+- `# {Title} — Practice` with domain and adjacent-domain lines below (no separate Worksheet Title heading)
 
 Required rendered sections:
-- Worksheet Title
 - Brief Learner Orientation
+- Problem Types Covered
 - Guided Exercises
+- Applied Scenarios
 - Observation / Application Tasks
-- Reflection Prompts
 - Self-Check
 - Capability Checkpoint
 
@@ -56,18 +63,30 @@ Must **not** render teaching-heavy sections such as:
 - Integration teaching blocks
 
 Practice minimums at standard depth:
-- 6 guided exercises
-- 3 observation tasks
-- 2 reflection prompts
-- 3 self-check items
+- 12 guided exercises
+- 4 applied scenarios
+- 4 observation tasks
+- 1 reflection prompt (planner JSON only; not rendered as a teaching section)
+- 5 self-check items
+- at least 8 distinct practice problem angles
+
+Depth scaling:
+- introductory: lower counts, minimum 6 angles
+- advanced: higher counts, minimum 10 angles
+
+Each worksheet item should carry `practice_angle` from the runtime ontology (definition recall, distinction judgment, procedural execution, scenario application, transfer, error correction, and related angles). The renderer lists covered angles under **Problem Types Covered**.
 
 The renderer should prioritize quantity, variety, and concrete use over exposition.
 
 ### 3. `information_only`
 Render a teaching or reading handout without student exercises.
 
+Title pattern:
+- `# {Title} — Information`
+- `## Worksheet Title` with domain line
+
 Required rendered sections:
-- Worksheet Title and Domain Placement
+- Worksheet Title
 - Learner Orientation
 - Core Definitions and Distinctions
 - Theoretical Overview
@@ -77,6 +96,7 @@ Required rendered sections:
 
 Must **not** render practice sections such as:
 - Guided Exercises
+- Applied Scenarios
 - Observation / Application Tasks
 - Reflection Prompts
 - Self-Check
@@ -93,7 +113,10 @@ Regardless of mode, the planner must still populate:
 
 Mode changes **rendering and minimum practice density**, not whether the system plans constitutionally.
 
-When `practice_only` is selected, the planner must make `worksheet_blueprint` especially rich and varied.
+When `practice_only` is selected, the planner must make `worksheet_blueprint` dense and varied:
+- tag items with `practice_angle`,
+- populate `applied_scenarios` for multi-step and contextual work,
+- cover many distinct angles from the practice problem ontology.
 
 When `information_only` is selected, teaching substance must live in lesson_blueprint layers; practice items may remain minimal in the JSON object but must not appear in rendered output.
 
@@ -106,7 +129,8 @@ The renderer must:
 2. include only the sections allowed for that mode,
 3. satisfy mode-specific practice minimums when practice is allowed,
 4. keep exercises traceable to `lesson_blueprint.worksheet_blueprint`,
-5. avoid generic filler prompts.
+5. avoid generic filler prompts,
+6. use the shared title block pattern for each mode suffix.
 
 ---
 
@@ -115,6 +139,7 @@ The renderer must:
 Output contract evaluation must be mode-aware:
 - section coverage uses mode-specific required headings,
 - practice minimums apply only when practice sections are allowed,
+- applied scenario counts and practice angle coverage are enforced for `practice_only`,
 - forbidden section types fail validation if they appear in the rendered worksheet.
 
 ---

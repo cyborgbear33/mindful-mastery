@@ -4,18 +4,33 @@ import {
   evaluateWorksheetContract
 } from "../src/prompt-assembly/lesson-contract";
 import { createFakePipeline } from "../src/orchestrator/lesson-pipeline";
-import { getWorksheetModeDefinition } from "../src/worksheet/worksheet-content-modes";
+import {
+  getWorksheetModeDefinition,
+  resolvePracticeMinimums
+} from "../src/worksheet/worksheet-content-modes";
+import {
+  getScaledPracticeMinimums,
+  PRACTICE_PROBLEM_ANGLES
+} from "../src/worksheet/practice-problem-ontology";
 
 describe("worksheet content modes", () => {
   it("defines teacher-friendly mode metadata", () => {
-    expect(getWorksheetModeDefinition("practice_only").practice_minimums.exercises).toBe(6);
+    expect(getWorksheetModeDefinition("practice_only").practice_minimums.exercises).toBe(12);
     expect(getWorksheetModeDefinition("information_only").omit_practice_sections).toBe(true);
+    expect(PRACTICE_PROBLEM_ANGLES.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it("scales practice-only minimums by depth", () => {
+    expect(resolvePracticeMinimums("practice_only", "advanced").exercises).toBe(16);
+    expect(resolvePracticeMinimums("practice_only", "introductory").min_practice_angles).toBe(6);
+    expect(getScaledPracticeMinimums("standard").applied_scenarios).toBe(4);
   });
 
   it("builds mode-specific output contracts", () => {
-    const practiceContract = buildWorksheetOutputContract("auto", "practice_only");
+    const practiceContract = buildWorksheetOutputContract("auto", "practice_only", "standard");
     expect(practiceContract.omit_information_sections).toBe(true);
-    expect(practiceContract.required_sections).toContain("Guided Exercises");
+    expect(practiceContract.required_sections).toContain("Applied Scenarios");
+    expect(practiceContract.practice_minimums.min_practice_angles).toBe(8);
   });
 
   it("generates a practice-only worksheet without teaching sections", async () => {
@@ -29,8 +44,28 @@ describe("worksheet content modes", () => {
       user_constraints: []
     });
 
-    expect(response.worksheet.toLowerCase()).toContain("guided exercises");
+    expect(response.worksheet).toContain("# Fractions on a Number Line — Practice");
+    expect(response.worksheet).not.toContain("## Worksheet Title");
+    expect(response.worksheet.toLowerCase()).toContain("problem types covered");
+    expect(response.worksheet.toLowerCase()).toContain("applied scenarios");
     expect(response.worksheet.toLowerCase()).not.toContain("core definitions");
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
+  });
+
+  it("uses the worksheet title pattern in full mode", async () => {
+    const response = await createFakePipeline().generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "full",
+      user_constraints: []
+    });
+
+    expect(response.worksheet).toContain("# Fractions on a Number Line — Worksheet");
+    expect(response.worksheet).toContain("## Worksheet Title");
+    expect(response.worksheet).not.toContain("Worksheet Title and Domain Placement");
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
   });
 
@@ -45,6 +80,7 @@ describe("worksheet content modes", () => {
       user_constraints: []
     });
 
+    expect(response.worksheet).toContain("# Fractions on a Number Line — Information");
     expect(response.worksheet.toLowerCase()).toContain("theoretical overview");
     expect(response.worksheet.toLowerCase()).not.toContain("guided exercises");
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
@@ -59,7 +95,7 @@ describe("worksheet content modes", () => {
         requested_output_type: "worksheet",
         lesson_plan: {
           lesson_blueprint: {
-            worksheet_blueprint: { exercises: [{ prompt: "a" }] }
+            worksheet_blueprint: { exercises: [{ prompt: "a", purpose: "b" }] }
           }
         } as never,
         learner_model: {} as never,
@@ -82,7 +118,7 @@ describe("worksheet content modes", () => {
     const contract = buildWorksheetOutputContract("auto", "full");
     const valid = evaluateWorksheetContract(
       [
-        "## Worksheet Title and Domain Placement",
+        "## Worksheet Title",
         "## Learner Orientation",
         "## Core Definitions and Distinctions",
         "## Guided Exercises",
@@ -104,7 +140,11 @@ describe("worksheet content modes", () => {
         lesson_plan: {
           lesson_blueprint: {
             worksheet_blueprint: {
-              exercises: [{ prompt: "a" }, { prompt: "b" }, { prompt: "c" }]
+              exercises: [
+                { prompt: "a", purpose: "b" },
+                { prompt: "c", purpose: "d" },
+                { prompt: "e", purpose: "f" }
+              ]
             }
           }
         } as never,

@@ -128,6 +128,7 @@ export const WorksheetItemSchema = z.object({
   prompt: z.string().min(1),
   purpose: z.string().min(1),
   response_format: WorksheetItemResponseFormatSchema.default("open_ended"),
+  practice_angle: z.string().optional(),
   options: z.array(z.string()).optional(),
   acceptable_answers: z.array(z.string()).optional(),
   expected_response_hint: z.string().optional()
@@ -135,6 +136,7 @@ export const WorksheetItemSchema = z.object({
 
 export const WorksheetBlueprintSchema = z.object({
   exercises: z.array(WorksheetItemSchema).min(1),
+  applied_scenarios: z.array(WorksheetItemSchema).optional(),
   observation_tasks: z.array(WorksheetItemSchema).min(1),
   reflection_prompts: z.array(WorksheetItemSchema).min(1),
   self_check_items: z.array(WorksheetItemSchema).min(1),
@@ -228,9 +230,11 @@ export const LessonPlanObjectSchema = z.object({
 
 export const WorksheetPracticeMinimumsSchema = z.object({
   exercises: z.number().int().min(0),
+  applied_scenarios: z.number().int().min(0).default(0),
   observation_tasks: z.number().int().min(0),
   reflection_prompts: z.number().int().min(0),
-  self_check_items: z.number().int().min(0)
+  self_check_items: z.number().int().min(0),
+  min_practice_angles: z.number().int().min(0).default(0)
 });
 
 export const WorksheetOutputContractSchema = z.object({
@@ -332,7 +336,7 @@ export type WorksheetOutputContract = z.infer<typeof WorksheetOutputContractSche
 export type WorksheetContentMode = z.infer<typeof WorksheetContentModeSchema>;
 
 export const REQUIRED_WORKSHEET_SECTIONS = [
-  "Worksheet Title and Domain Placement",
+  "Worksheet Title",
   "Learner Orientation",
   "Core Definitions and Distinctions",
   "Guided Exercises",

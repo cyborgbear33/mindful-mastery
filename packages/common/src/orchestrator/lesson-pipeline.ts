@@ -11,6 +11,7 @@ import { inferLearnerModel } from "../learner-model/infer-learner-model";
 import { normalizeRequest } from "../normalization/normalize-request";
 import {
   buildDeterministicLessonPlan,
+  buildPlannerStubPlan,
   FakeLessonModelAdapter,
   renderWorksheetFromPlan
 } from "../planning/fake-lesson-adapter";
@@ -23,6 +24,7 @@ import {
   evaluateWorksheetContract
 } from "../prompt-assembly/lesson-contract";
 import { loadGuidanceSnippets, loadPromptAsset } from "../prompt-assembly/guidance-loader";
+import { normalizeRenderedWorksheet } from "../worksheet/normalize-worksheet-markdown";
 import { validateLessonPlan } from "../validation/schema-validator";
 
 export type LessonPipelineOptions = {
@@ -109,15 +111,32 @@ export class LessonPipeline {
     });
     reasoningContext.meta.authority_files_loaded = filesLoaded;
 
-    let worksheet = await this.modelAdapter.generate({
-      llmPrompt,
-      reasoningContext,
-      modelId: normalizedRequest.model_id,
-      stage: "render"
-    });
-
     let renderRepairAttempted = false;
     let renderRepairSucceeded = false;
+    let worksheet: string;
+    try {
+      worksheet = normalizeRenderedWorksheet(
+        await this.modelAdapter.generate({
+          llmPrompt,
+          reasoningContext,
+          modelId: normalizedRequest.model_id,
+          stage: "render"
+        })
+      );
+    } catch (error) {
+      renderRepairAttempted = true;
+      const message = error instanceof Error ? error.message : String(error);
+      worksheet = renderWorksheetFromPlan(
+        lessonPlan,
+        learnerModel,
+        normalizedRequest.worksheet_content_mode
+      );
+      lessonPlan.quality_controls.inference_assumptions = [
+        ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+        `Render model call failed; used deterministic render fallback: ${message}`
+      ];
+    }
+
     let contractEval = evaluateWorksheetContract(worksheet, reasoningContext);
 
     if (!contractEval.valid) {
@@ -128,12 +147,18 @@ export class LessonPipeline {
           originalWorksheet: worksheet,
           issues: contractEval.issues
         });
-        worksheet = await this.modelAdapter.generate({
-          llmPrompt: repairPrompt,
-          reasoningContext,
-          modelId: normalizedRequest.model_id,
-          stage: "render"
-        });
+        try {
+          worksheet = normalizeRenderedWorksheet(
+            await this.modelAdapter.generate({
+              llmPrompt: repairPrompt,
+              reasoningContext,
+              modelId: normalizedRequest.model_id,
+              stage: "render"
+            })
+          );
+        } catch {
+          break;
+        }
         contractEval = evaluateWorksheetContract(worksheet, reasoningContext);
         if (contractEval.valid) {
           renderRepairSucceeded = true;
@@ -144,20 +169,29 @@ export class LessonPipeline {
 
     if (!contractEval.valid) {
       const contractIssues = [...contractEval.issues];
-      const fallbackWorksheet = renderWorksheetFromPlan(
+      const fallbackPlans = [
         lessonPlan,
-        learnerModel,
-        normalizedRequest.worksheet_content_mode
-      );
-      const fallbackEval = evaluateWorksheetContract(fallbackWorksheet, reasoningContext);
-      if (fallbackEval.valid) {
-        worksheet = fallbackWorksheet;
-        contractEval = fallbackEval;
-        renderRepairAttempted = true;
-        lessonPlan.quality_controls.inference_assumptions = [
-          ...(lessonPlan.quality_controls.inference_assumptions ?? []),
-          `Deterministic worksheet render fallback used after contract issues: ${contractIssues.join("; ")}`
-        ];
+        buildDeterministicLessonPlan(normalizedRequest, learnerModel)
+      ];
+
+      for (const fallbackPlan of fallbackPlans) {
+        const fallbackWorksheet = renderWorksheetFromPlan(
+          fallbackPlan,
+          learnerModel,
+          normalizedRequest.worksheet_content_mode
+        );
+        const fallbackEval = evaluateWorksheetContract(fallbackWorksheet, reasoningContext);
+        if (fallbackEval.valid) {
+          worksheet = fallbackWorksheet;
+          lessonPlan = fallbackPlan;
+          contractEval = fallbackEval;
+          renderRepairAttempted = true;
+          lessonPlan.quality_controls.inference_assumptions = [
+            ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+            `Deterministic worksheet render fallback used after contract issues: ${contractIssues.join("; ")}`
+          ];
+          break;
+        }
       }
     }
 
@@ -210,7 +244,7 @@ export class LessonPipeline {
     systemPrompt: string;
     developerPrompt: string;
   }): Promise<{ lessonPlan: LessonPlanObject; repairAttempted: boolean; repairSucceeded: boolean }> {
-    const stubPlan = buildDeterministicLessonPlan(input.normalizedRequest, input.learnerModel);
+    const stubPlan = buildPlannerStubPlan(input.normalizedRequest, input.learnerModel);
     let repairErrors: string[] | undefined;
     let repairAttempted = false;
     let repairSucceeded = false;
@@ -225,40 +259,51 @@ export class LessonPipeline {
         repairErrors
       });
 
-      const raw = await this.modelAdapter.generate({
-        llmPrompt: plannerPrompt,
-        reasoningContext: {
-          topic: input.normalizedRequest.topic,
-          requested_output_type: input.normalizedRequest.requested_output_type,
-          lesson_plan: stubPlan,
-          learner_model: input.learnerModel,
-          output_requirements: [],
-          output_contract: {
-            required_sections: [],
-            markdown_required: false,
-            min_heading_count: 0,
-            min_output_requirement_coverage: 0,
-            worksheet_response_format: "auto",
-            worksheet_content_mode: input.normalizedRequest.worksheet_content_mode,
-            practice_minimums: {
-              exercises: 0,
-              observation_tasks: 0,
-              reflection_prompts: 0,
-              self_check_items: 0
+      let raw: string;
+      try {
+        raw = await this.modelAdapter.generate({
+          llmPrompt: plannerPrompt,
+          reasoningContext: {
+            topic: input.normalizedRequest.topic,
+            requested_output_type: input.normalizedRequest.requested_output_type,
+            lesson_plan: stubPlan,
+            learner_model: input.learnerModel,
+            output_requirements: [],
+            output_contract: {
+              required_sections: [],
+              markdown_required: false,
+              min_heading_count: 0,
+              min_output_requirement_coverage: 0,
+              worksheet_response_format: "auto",
+              worksheet_content_mode: input.normalizedRequest.worksheet_content_mode,
+              practice_minimums: {
+                exercises: 0,
+                applied_scenarios: 0,
+                observation_tasks: 0,
+                reflection_prompts: 0,
+                self_check_items: 0,
+                min_practice_angles: 0
+              },
+              omit_information_sections: false,
+              omit_practice_sections: false
             },
-            omit_information_sections: false,
-            omit_practice_sections: false
+            meta: {
+              guidance_used: input.guidanceSnippets,
+              token_budget_chars: this.tokenBudgetChars,
+              guidance_chars_used: 0,
+              authority_files_loaded: []
+            }
           },
-          meta: {
-            guidance_used: input.guidanceSnippets,
-            token_budget_chars: this.tokenBudgetChars,
-            guidance_chars_used: 0,
-            authority_files_loaded: []
-          }
-        },
-        modelId: input.normalizedRequest.model_id,
-        stage: "plan"
-      } as GenerateModelInput);
+          modelId: input.normalizedRequest.model_id,
+          stage: "plan"
+        } as GenerateModelInput);
+      } catch (error) {
+        repairErrors = [
+          error instanceof Error ? error.message : "Model adapter failed during planning"
+        ];
+        repairAttempted = true;
+        break;
+      }
 
       let parsed: unknown;
       try {

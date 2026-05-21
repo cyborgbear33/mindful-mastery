@@ -5,7 +5,15 @@ import {
   WorksheetContentMode,
   WorksheetItem
 } from "../lesson-types";
-import { getWorksheetModeDefinition } from "../worksheet/worksheet-content-modes";
+import {
+  buildOntologyPracticeItems,
+  listPracticeAngleLabels
+} from "../worksheet/practice-problem-ontology";
+import {
+  renderPracticeTitleBlock,
+  renderWorksheetTitleBlock
+} from "../worksheet/render-worksheet-title-block";
+import { getWorksheetModeDefinition, resolvePracticeMinimums } from "../worksheet/worksheet-content-modes";
 import { renderWorksheetHeader } from "../worksheet/render-worksheet-header";
 import { GenerateModelInput, LessonModelAdapter } from "./model-adapter";
 
@@ -82,11 +90,87 @@ const buildPracticeItems = (
   return Array.from({ length: count }, (_, index) => templates[kind](index));
 };
 
+const buildPracticeOnlyBlueprint = (
+  request: NormalizedRequest
+): LessonPlanObject["lesson_blueprint"]["worksheet_blueprint"] => {
+  const minimums = resolvePracticeMinimums("practice_only", request.requested_depth);
+  const placement = {
+    domain: request.explicit_domain,
+    subdomain: request.explicit_subdomain,
+    topicFocus: request.topic_focus
+  };
+
+  const exercises = buildOntologyPracticeItems(
+    request.topic,
+    minimums.exercises,
+    placement,
+    false
+  );
+  const appliedScenarios = buildOntologyPracticeItems(
+    request.topic,
+    minimums.applied_scenarios,
+    placement,
+    true
+  );
+  const observationTasks = buildOntologyPracticeItems(
+    request.topic,
+    minimums.observation_tasks,
+    placement,
+    true
+  ).map((item, index) => ({
+    ...item,
+    prompt:
+      index === 0
+        ? `Observe one real instance of ${request.topic} in the next 24 hours. Record what you notice and connect it to today's practice angles.`
+        : item.prompt
+  }));
+  const selfCheckItems = buildOntologyPracticeItems(
+    request.topic,
+    minimums.self_check_items,
+    placement,
+    false
+  ).map((item, index) => ({
+    ...item,
+    prompt:
+      index === 0
+        ? `Without notes, can you complete one guided exercise and one applied scenario from this sheet from memory?`
+        : item.prompt
+  }));
+  const reflectionCount = Math.max(minimums.reflection_prompts, 1);
+
+  return {
+    exercises,
+    applied_scenarios: appliedScenarios,
+    observation_tasks: observationTasks,
+    reflection_prompts: buildPracticeItems(request.topic, "reflection", reflectionCount),
+    self_check_items: selfCheckItems,
+    capability_checkpoint: `Demonstrate mastery of ${request.topic} by completing guided exercises and applied scenarios across at least ${minimums.min_practice_angles} distinct problem types without copying earlier answers.`
+  };
+};
+
 const headerFromLessonPlan = (lessonPlan: LessonPlanObject): string =>
   renderWorksheetHeader({
     name: lessonPlan.generation_context.worksheet_header_name,
     date: lessonPlan.generation_context.worksheet_header_date,
     description: lessonPlan.generation_context.worksheet_header_description
+  });
+
+const titleBlockFromPlan = (
+  lessonPlan: LessonPlanObject,
+  suffix: "Worksheet" | "Information"
+): string[] =>
+  renderWorksheetTitleBlock({
+    title: lessonPlan.topic_model.title,
+    domain: lessonPlan.constitutional_alignment.primary_domain,
+    adjacentDomains: lessonPlan.constitutional_alignment.adjacent_domains,
+    suffix
+  });
+
+const practiceTitleFromPlan = (lessonPlan: LessonPlanObject): string[] =>
+  renderPracticeTitleBlock({
+    title: lessonPlan.topic_model.title,
+    domain: lessonPlan.constitutional_alignment.primary_domain,
+    adjacentDomains: lessonPlan.constitutional_alignment.adjacent_domains
   });
 
 const renderFullWorksheet = (
@@ -97,17 +181,13 @@ const renderFullWorksheet = (
   const bp = lessonPlan.lesson_blueprint;
 
   return [
-    `# ${lessonPlan.topic_model.title}`,
-    "",
-    "## Worksheet Title and Domain Placement",
-    `**Primary domain:** ${lessonPlan.constitutional_alignment.primary_domain}`,
-    `**Adjacent domains:** ${lessonPlan.constitutional_alignment.adjacent_domains.join(", ")}`,
-    lessonPlan.lesson_blueprint.orientation.content,
+    ...titleBlockFromPlan(lessonPlan, "Worksheet"),
     "",
     "## Learner Orientation",
     `**Current knowledge context:** ${learnerModel.current_knowledge_context}`,
     `**Target knowledge context:** ${learnerModel.target_knowledge_context}`,
     `**Transformation:** ${learnerModel.transformation_goal}`,
+    bp.orientation.content,
     "",
     "## Core Definitions and Distinctions",
     ...lessonPlan.topic_model.definitions.map((d) => `- **${d.term}:** ${d.definition}`),
@@ -145,25 +225,33 @@ const renderPracticeOnlyWorksheet = (
   learnerModel: LearnerModel
 ): string => {
   const wb = lessonPlan.lesson_blueprint.worksheet_blueprint;
+  const practiceItems = [
+    ...wb.exercises,
+    ...(wb.applied_scenarios ?? []),
+    ...wb.observation_tasks,
+    ...wb.self_check_items
+  ];
+  const angleLabels = listPracticeAngleLabels(practiceItems);
 
   return [
-    `# ${lessonPlan.topic_model.title} — Practice`,
-    "",
-    "## Worksheet Title",
-    `${lessonPlan.topic_model.title} (${lessonPlan.constitutional_alignment.primary_domain})`,
+    ...practiceTitleFromPlan(lessonPlan),
     "",
     "## Brief Learner Orientation",
     `You are moving from: ${learnerModel.current_knowledge_context}`,
     `You are working toward: ${learnerModel.target_knowledge_context}`,
+    `This sheet emphasizes many problem types and solution angles for ${lessonPlan.topic_model.title}.`,
+    "",
+    "## Problem Types Covered",
+    ...angleLabels.map((label) => `- ${label}`),
     "",
     "## Guided Exercises",
     formatItems(wb.exercises),
     "",
+    "## Applied Scenarios",
+    formatItems(wb.applied_scenarios ?? []),
+    "",
     "## Observation / Application Tasks",
     formatItems(wb.observation_tasks),
-    "",
-    "## Reflection Prompts",
-    formatItems(wb.reflection_prompts),
     "",
     "## Self-Check",
     formatItems(wb.self_check_items),
@@ -180,17 +268,13 @@ const renderInformationOnlyWorksheet = (
   const bp = lessonPlan.lesson_blueprint;
 
   return [
-    `# ${lessonPlan.topic_model.title}`,
-    "",
-    "## Worksheet Title and Domain Placement",
-    `**Primary domain:** ${lessonPlan.constitutional_alignment.primary_domain}`,
-    `**Adjacent domains:** ${lessonPlan.constitutional_alignment.adjacent_domains.join(", ")}`,
-    bp.orientation.content,
+    ...titleBlockFromPlan(lessonPlan, "Information"),
     "",
     "## Learner Orientation",
     `**Current knowledge context:** ${learnerModel.current_knowledge_context}`,
     `**Target knowledge context:** ${learnerModel.target_knowledge_context}`,
     `**Transformation:** ${learnerModel.transformation_goal}`,
+    bp.orientation.content,
     "",
     "## Core Definitions and Distinctions",
     ...lessonPlan.topic_model.definitions.map((d) => `- **${d.term}:** ${d.definition}`),
@@ -236,6 +320,31 @@ export const renderWorksheetFromPlan = (
   return `${header}${body}`;
 };
 
+export const buildPlannerStubPlan = (
+  request: NormalizedRequest,
+  learnerModel: LearnerModel
+): LessonPlanObject => {
+  const plan = buildDeterministicLessonPlan(request, learnerModel);
+  const placeholder: WorksheetItem = {
+    prompt: "Planner will populate concrete items.",
+    purpose: "Stub item for planner context only.",
+    response_format: "open_ended"
+  };
+
+  plan.lesson_blueprint.worksheet_blueprint = {
+    exercises: [placeholder],
+    observation_tasks: [placeholder],
+    reflection_prompts: [placeholder],
+    self_check_items: [placeholder],
+    capability_checkpoint: plan.lesson_blueprint.worksheet_blueprint.capability_checkpoint
+  };
+  plan.quality_controls.inference_assumptions = [
+    "Minimal planner stub — full worksheet_blueprint is produced by the planner model."
+  ];
+
+  return plan;
+};
+
 export const buildDeterministicLessonPlan = (
   request: NormalizedRequest,
   learnerModel: LearnerModel
@@ -243,11 +352,28 @@ export const buildDeterministicLessonPlan = (
   const lessonId = `lesson-${request.request_id.slice(0, 8)}`;
   const domain = request.explicit_domain ?? "self";
   const modeDefinition = getWorksheetModeDefinition(request.worksheet_content_mode);
-  const minimums = modeDefinition.practice_minimums;
+  const minimums = resolvePracticeMinimums(
+    request.worksheet_content_mode,
+    request.requested_depth
+  );
   const exerciseCount = Math.max(minimums.exercises, 1);
-  const observationCount = Math.max(minimums.observation_tasks, 1);
+  const observationCount = modeDefinition.omit_practice_sections
+    ? 1
+    : Math.max(minimums.observation_tasks, 1);
   const reflectionCount = Math.max(minimums.reflection_prompts, 1);
-  const selfCheckCount = Math.max(minimums.self_check_items, 1);
+  const selfCheckCount = modeDefinition.omit_practice_sections
+    ? 1
+    : Math.max(minimums.self_check_items, 1);
+  const worksheetBlueprint =
+    request.worksheet_content_mode === "practice_only"
+      ? buildPracticeOnlyBlueprint(request)
+      : {
+          exercises: buildPracticeItems(request.topic, "exercise", exerciseCount),
+          observation_tasks: buildPracticeItems(request.topic, "observation", observationCount),
+          reflection_prompts: buildPracticeItems(request.topic, "reflection", reflectionCount),
+          self_check_items: buildPracticeItems(request.topic, "self_check", selfCheckCount),
+          capability_checkpoint: `Demonstrate understanding of ${request.topic} by completing all exercises and explaining one real-world connection.`
+        };
 
   return {
     spec_metadata: {
@@ -353,13 +479,7 @@ export const buildDeterministicLessonPlan = (
         title: "Capability Gained",
         content: `The learner can explain, apply, and integrate ${request.topic} and is able to demonstrate capability in a new context.`
       },
-      worksheet_blueprint: {
-        exercises: buildPracticeItems(request.topic, "exercise", exerciseCount),
-        observation_tasks: buildPracticeItems(request.topic, "observation", observationCount),
-        reflection_prompts: buildPracticeItems(request.topic, "reflection", reflectionCount),
-        self_check_items: buildPracticeItems(request.topic, "self_check", selfCheckCount),
-        capability_checkpoint: `Demonstrate understanding of ${request.topic} by completing all exercises and explaining one real-world connection.`
-      }
+      worksheet_blueprint: worksheetBlueprint
     },
     quality_controls: {
       required_sections_present: [

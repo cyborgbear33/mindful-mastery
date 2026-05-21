@@ -1,0 +1,65 @@
+.worksheet h1,
+.worksheet h2,
+.worksheet h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.25;
+}
+
+.worksheet h1 {
+  margin-top: 0;
+  font-size: 1.75rem;
+}
+
+.worksheet h2 {
+  font-size: 1.35rem;
+}
+
+.worksheet p,
+.worksheet ul,
+.worksheet ol {
+  margin-top: 0;
+  margin-bottom: 0.85rem;
+}
+
+.worksheet hr {
+  border: none;
+  border-top: 1px solid #3a3f4b;
+  margin: 1.25rem 0;
+}
+
+.worksheet strong {
+  font-weight: 700;
+}
+
+.worksheet em {
+  color: #c4c7c5;
+}
+
+.worksheet pre {
+  overflow-x: auto;
+  padding: 0.75rem 1rem;
+  background: #0f1115;
+  border: 1px solid #3a3f4b;
+  border-radius: 6px;
+}
+
+.worksheet code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
+
+.worksheet :not(pre) > code {
+  padding: 0.1rem 0.35rem;
+  background: #0f1115;
+  border-radius: 4px;
+}
+
+.worksheet ol,
+.worksheet ul {
+  padding-left: 1.4rem;
+}
+
+.worksheet li {
+  margin-bottom: 0.35rem;
+}

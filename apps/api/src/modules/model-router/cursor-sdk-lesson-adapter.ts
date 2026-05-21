@@ -6,6 +6,13 @@ import {
 
 export { GenerateModelInput, LessonModelAdapter };
 
+const formatAdapterError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+};
+
 export class CursorSdkLessonAdapter extends LessonModelAdapter {
   constructor(
     private readonly apiKey: string,
@@ -17,23 +24,27 @@ export class CursorSdkLessonAdapter extends LessonModelAdapter {
   async generate(input: GenerateModelInput): Promise<string> {
     const resolvedModelId = input.modelId?.trim() || this.defaultModelId;
 
-    const { Agent } = await import("@cursor/sdk");
-    const result = await Agent.prompt(this.buildPrompt(input), {
-      apiKey: this.apiKey,
-      model: { id: resolvedModelId },
-      local: { cwd: process.cwd(), settingSources: [] }
-    });
+    try {
+      const { Agent } = await import("@cursor/sdk");
+      const result = await Agent.prompt(this.buildPrompt(input), {
+        apiKey: this.apiKey,
+        model: { id: resolvedModelId },
+        local: { cwd: process.cwd(), settingSources: [] }
+      });
 
-    if (result.status !== "finished") {
-      throw new Error(`Cursor SDK run did not finish: ${result.status}`);
+      if (result.status !== "finished") {
+        throw new Error(`Cursor SDK run did not finish: ${result.status}`);
+      }
+
+      const content = String(result.result ?? "").trim();
+      if (!content) {
+        throw new Error("Cursor SDK returned empty content.");
+      }
+
+      return content;
+    } catch (error) {
+      throw new Error(`Cursor SDK generation failed: ${formatAdapterError(error)}`);
     }
-
-    const content = String(result.result ?? "").trim();
-    if (!content) {
-      throw new Error("Cursor SDK returned empty content.");
-    }
-
-    return content;
   }
 
   private buildPrompt(input: GenerateModelInput): string {
@@ -43,7 +54,7 @@ export class CursorSdkLessonAdapter extends LessonModelAdapter {
       parts.push(
         "",
         "Reasoning context:",
-        JSON.stringify(input.reasoningContext, null, 2)
+        JSON.stringify(this.serializeReasoningContext(input.reasoningContext, input.stage), null, 2)
       );
     }
 
@@ -54,6 +65,53 @@ export class CursorSdkLessonAdapter extends LessonModelAdapter {
     }
 
     return parts.join("\n");
+  }
+
+  private serializeReasoningContext(
+    reasoningContext: ReasoningContext,
+    stage?: GenerateModelInput["stage"]
+  ): ReasoningContext {
+    if (stage !== "render") {
+      return reasoningContext;
+    }
+
+    const blueprint = reasoningContext.lesson_plan.lesson_blueprint.worksheet_blueprint;
+    return {
+      ...reasoningContext,
+      lesson_plan: {
+        ...reasoningContext.lesson_plan,
+        lesson_blueprint: {
+          ...reasoningContext.lesson_plan.lesson_blueprint,
+          worksheet_blueprint: {
+            ...blueprint,
+            exercises: blueprint.exercises.map((item) => ({
+              prompt: item.prompt,
+              purpose: item.purpose,
+              practice_angle: item.practice_angle,
+              response_format: item.response_format
+            })),
+            applied_scenarios: blueprint.applied_scenarios?.map((item) => ({
+              prompt: item.prompt,
+              purpose: item.purpose,
+              practice_angle: item.practice_angle,
+              response_format: item.response_format
+            })),
+            observation_tasks: blueprint.observation_tasks.map((item) => ({
+              prompt: item.prompt,
+              purpose: item.purpose,
+              practice_angle: item.practice_angle,
+              response_format: item.response_format
+            })),
+            self_check_items: blueprint.self_check_items.map((item) => ({
+              prompt: item.prompt,
+              purpose: item.purpose,
+              practice_angle: item.practice_angle,
+              response_format: item.response_format
+            }))
+          }
+        }
+      }
+    };
   }
 }
 

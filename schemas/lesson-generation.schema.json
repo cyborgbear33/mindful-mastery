@@ -262,6 +262,10 @@
               "items": { "$ref": "#/$defs/worksheet_item" },
               "minItems": 1
             },
+            "applied_scenarios": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/worksheet_item" }
+            },
             "observation_tasks": {
               "type": "array",
               "items": { "$ref": "#/$defs/worksheet_item" },
@@ -321,6 +325,7 @@
       "properties": {
         "prompt": { "type": "string", "minLength": 1 },
         "purpose": { "type": "string", "minLength": 1 },
+        "practice_angle": { "type": "string" },
         "response_format": {
           "type": "string",
           "enum": ["open_ended", "fill_in", "multiple_choice", "true_false"]
