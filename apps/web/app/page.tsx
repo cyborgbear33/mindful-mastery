@@ -286,9 +286,12 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateLessonResponse | null>(null);
   const [tab, setTab] = useState<Tab>("worksheet");
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingPhaseIndex, setLoadingPhaseIndex] = useState(0);
   const worksheetRef = useRef<HTMLElement>(null);
   const subdomainBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateAbortRef = useRef<AbortController | null>(null);
+  const loadingStartedAtRef = useRef<number | null>(null);
 
   const worksheetMarkdown = useMemo(
     () => (result?.worksheet ? normalizeWorksheetMarkdown(result.worksheet) : ""),
@@ -320,6 +323,16 @@ export default function HomePage() {
     );
   }, [subdomainInput, subdomainOptions]);
 
+  const loadingPhases = useMemo(
+    () => [
+      "Preparing lesson context",
+      "Planning worksheet structure",
+      "Building exercises and examples",
+      "Finalizing output"
+    ],
+    []
+  );
+
   useEffect(() => {
     const loadOntology = async () => {
       try {
@@ -338,6 +351,40 @@ export default function HomePage() {
       // handled by local state update
     });
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      setLoadingProgress(0);
+      setLoadingPhaseIndex(0);
+      loadingStartedAtRef.current = null;
+      return;
+    }
+
+    const progressProfile =
+      worksheetContentMode === "practice_only"
+        ? { maxProgress: 95, curveMs: 2800, phaseIntervalMs: 900 }
+        : worksheetContentMode === "information_only"
+          ? { maxProgress: 96, curveMs: 6000, phaseIntervalMs: 1200 }
+          : { maxProgress: 96, curveMs: 12000, phaseIntervalMs: 1700 };
+
+    const progressTimer = setInterval(() => {
+      const start = loadingStartedAtRef.current ?? Date.now();
+      const elapsedMs = Date.now() - start;
+      const projected = Math.round(
+        progressProfile.maxProgress * (1 - Math.exp(-elapsedMs / progressProfile.curveMs))
+      );
+      setLoadingProgress((prev) => Math.max(prev, Math.min(projected, progressProfile.maxProgress)));
+    }, 300);
+
+    const phaseTimer = setInterval(() => {
+      setLoadingPhaseIndex((prev) => (prev + 1) % loadingPhases.length);
+    }, progressProfile.phaseIntervalMs);
+
+    return () => {
+      clearInterval(progressTimer);
+      clearInterval(phaseTimer);
+    };
+  }, [loading, loadingPhases, worksheetContentMode]);
 
   useEffect(() => {
     setSubdomainInput("");
@@ -362,6 +409,9 @@ export default function HomePage() {
     generateAbortRef.current?.abort();
     const controller = new AbortController();
     generateAbortRef.current = controller;
+    loadingStartedAtRef.current = Date.now();
+    setLoadingProgress(2);
+    setLoadingPhaseIndex(0);
     setLoading(true);
     setError(null);
 
@@ -402,6 +452,7 @@ export default function HomePage() {
 
       const data = (await response.json()) as GenerateLessonResponse;
       setResult(data);
+      setLoadingProgress(100);
       setTab("worksheet");
       setCopyStatus("idle");
     } catch (err) {
@@ -421,6 +472,7 @@ export default function HomePage() {
       if (generateAbortRef.current === controller) {
         generateAbortRef.current = null;
       }
+      loadingStartedAtRef.current = null;
       setLoading(false);
     }
   };
@@ -760,34 +812,37 @@ export default function HomePage() {
         </div>
       )}
 
-      {result && (
+      {(result || loading) && (
         <section>
-          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                style={{
-                  ...buttonStyle,
-                  background: tab === t.id ? "#3d5afe" : "#2a2f3a",
-                  padding: "0.5rem 1rem"
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {result && (
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTab(t.id)}
+                  style={{
+                    ...buttonStyle,
+                    background: tab === t.id ? "#3d5afe" : "#2a2f3a",
+                    padding: "0.5rem 1rem"
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
             style={{
+              position: "relative",
               padding: "1.25rem",
               background: "#1a1d23",
               borderRadius: 8,
               minHeight: 300
             }}
           >
-            {tab === "worksheet" && (
+            {tab === "worksheet" && result && (
               <>
                 <div
                   style={{
@@ -828,12 +883,12 @@ export default function HomePage() {
                 </article>
               </>
             )}
-            {tab === "plan" && (
+            {tab === "plan" && result && (
               <pre style={{ overflow: "auto", fontSize: "0.85rem" }}>
                 {JSON.stringify(result.lesson_plan, null, 2)}
               </pre>
             )}
-            {tab === "audit" && (
+            {tab === "audit" && result && (
               <div>
                 <p>
                   <strong>Pass:</strong> {result.audit_result.constitutional_pass ? "Yes" : "No"} —{" "}
@@ -861,8 +916,29 @@ export default function HomePage() {
                 )}
               </div>
             )}
-            {tab === "prompt" && (
+            {tab === "prompt" && result && (
               <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.85rem" }}>{result.llm_prompt}</pre>
+            )}
+            {!result && !loading && (
+              <p style={{ color: "#9aa0a6", margin: 0 }}>
+                Your generated worksheet will appear here.
+              </p>
+            )}
+            {loading && (
+              <div style={loadingOverlayStyle}>
+                <div style={loadingPanelStyle}>
+                  <strong style={{ display: "block", marginBottom: "0.35rem" }}>Generating handout…</strong>
+                  <span style={{ color: "#b8bec7", fontSize: "0.9rem" }}>
+                    {loadingPhases[loadingPhaseIndex]}
+                  </span>
+                  <div style={loadingBarTrackStyle}>
+                    <div style={{ ...loadingBarFillStyle, width: `${loadingProgress}%` }} />
+                  </div>
+                  <span style={{ color: "#9aa0a6", fontSize: "0.82rem" }}>
+                    {loadingProgress}% (estimated)
+                  </span>
+                </div>
+              </div>
             )}
           </div>
         </section>
@@ -967,4 +1043,40 @@ const suggestionButtonStyle: React.CSSProperties = {
   color: "#e8eaed",
   padding: "0.6rem 0.75rem",
   cursor: "pointer"
+};
+
+const loadingOverlayStyle: React.CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  background: "rgba(15, 17, 21, 0.72)",
+  borderRadius: 8,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  pointerEvents: "none"
+};
+
+const loadingPanelStyle: React.CSSProperties = {
+  width: "min(520px, 90%)",
+  background: "rgba(26, 29, 35, 0.95)",
+  border: "1px solid #3a3f4b",
+  borderRadius: 8,
+  padding: "0.9rem 1rem",
+  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.28)"
+};
+
+const loadingBarTrackStyle: React.CSSProperties = {
+  marginTop: "0.7rem",
+  marginBottom: "0.4rem",
+  height: 8,
+  borderRadius: 999,
+  background: "#2a2f3a",
+  overflow: "hidden"
+};
+
+const loadingBarFillStyle: React.CSSProperties = {
+  height: "100%",
+  borderRadius: 999,
+  background: "linear-gradient(90deg, #3d5afe 0%, #6f86ff 100%)",
+  transition: "width 280ms ease"
 };

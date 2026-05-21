@@ -38,6 +38,15 @@ export type LessonPipelineOptions = {
 };
 
 export class LessonPipeline {
+  private static readonly guidanceLoadCache = new Map<
+    string,
+    Promise<Awaited<ReturnType<typeof loadGuidanceSnippets>>>
+  >();
+  private static readonly promptLoadCache = new Map<
+    string,
+    Promise<{ systemPrompt: string; developerPrompt: string }>
+  >();
+
   private readonly tokenBudgetChars: number;
   private readonly repoRoot?: string;
   private readonly persistenceDir?: string;
@@ -66,24 +75,14 @@ export class LessonPipeline {
 
     const { snippets, filesLoaded } = useFastPracticeOnlyPath
       ? { snippets: [], filesLoaded: [] }
-      : await loadGuidanceSnippets(this.tokenBudgetChars, this.repoRoot);
+      : await this.getGuidanceSnippetsCached();
 
     let systemPrompt = "";
     let developerPrompt = "";
     if (!useFastPracticeOnlyPath) {
-      try {
-        systemPrompt = await loadPromptAsset(
-          "prompts/system/constitution-bound-lesson-architect.system.md",
-          this.repoRoot
-        );
-        developerPrompt = await loadPromptAsset(
-          "prompts/developer/lesson-generation.developer.md",
-          this.repoRoot
-        );
-      } catch {
-        systemPrompt = "You are a constitution-bound lesson architect.";
-        developerPrompt = "Build and render governed lesson artifacts.";
-      }
+      const prompts = await this.getPromptAssetsCached();
+      systemPrompt = prompts.systemPrompt;
+      developerPrompt = prompts.developerPrompt;
     }
 
     let lessonPlan: LessonPlanObject;
@@ -278,6 +277,46 @@ export class LessonPipeline {
     }
 
     return response;
+  }
+
+  private async getGuidanceSnippetsCached(): Promise<{
+    snippets: Awaited<ReturnType<typeof loadGuidanceSnippets>>["snippets"];
+    filesLoaded: string[];
+  }> {
+    const key = `${this.repoRoot ?? "__default__"}::${this.tokenBudgetChars}`;
+    let cachedPromise = LessonPipeline.guidanceLoadCache.get(key);
+    if (!cachedPromise) {
+      cachedPromise = loadGuidanceSnippets(this.tokenBudgetChars, this.repoRoot);
+      LessonPipeline.guidanceLoadCache.set(key, cachedPromise);
+    }
+    const loaded = await cachedPromise;
+    return {
+      snippets: loaded.snippets.map((snippet) => ({ ...snippet })),
+      filesLoaded: [...loaded.filesLoaded]
+    };
+  }
+
+  private async getPromptAssetsCached(): Promise<{ systemPrompt: string; developerPrompt: string }> {
+    const key = this.repoRoot ?? "__default__";
+    let cachedPromise = LessonPipeline.promptLoadCache.get(key);
+    if (!cachedPromise) {
+      cachedPromise = (async () => {
+        try {
+          const [systemPrompt, developerPrompt] = await Promise.all([
+            loadPromptAsset("prompts/system/constitution-bound-lesson-architect.system.md", this.repoRoot),
+            loadPromptAsset("prompts/developer/lesson-generation.developer.md", this.repoRoot)
+          ]);
+          return { systemPrompt, developerPrompt };
+        } catch {
+          return {
+            systemPrompt: "You are a constitution-bound lesson architect.",
+            developerPrompt: "Build and render governed lesson artifacts."
+          };
+        }
+      })();
+      LessonPipeline.promptLoadCache.set(key, cachedPromise);
+    }
+    return cachedPromise;
   }
 
   private async planWithRepair(input: {
