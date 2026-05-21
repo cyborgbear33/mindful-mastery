@@ -7,7 +7,8 @@ import {
 } from "../lesson-types";
 import {
   buildOntologyPracticeItems,
-  listPracticeAngleLabels
+  formatPracticeKeyLines,
+  getPracticeAngleCode
 } from "../worksheet/practice-problem-ontology";
 import {
   renderPracticeTitleBlock,
@@ -19,6 +20,91 @@ import { GenerateModelInput, LessonModelAdapter } from "./model-adapter";
 
 const formatItems = (items: { prompt: string; purpose: string }[]) =>
   items.map((item, i) => `${i + 1}. ${item.prompt}\n   _Purpose: ${item.purpose}_`).join("\n\n");
+
+const formatPracticeItems = (items: WorksheetItem[]) =>
+  items
+    .map(
+      (item, i) =>
+        `${i + 1}. _${getPracticeAngleCode(item.practice_angle)}_  ${item.prompt}`
+    )
+    .join("\n\n");
+
+const buildWorkbookProblems = (
+  topic: string,
+  count: number,
+  domain: string,
+  subdomain?: string
+): WorksheetItem[] => {
+  const scope = `${subdomain ? `${subdomain} in ` : ""}${domain}`.toLowerCase();
+  const mathLike = ["quadrivium", "arithmetic", "algebra", "geometry", "mathematics"].some((token) =>
+    scope.includes(token)
+  );
+  const languageLike = ["trivium", "grammar", "logic", "rhetoric"].some((token) =>
+    scope.includes(token)
+  );
+  const scienceLike = ["science_analysis", "science", "analysis"].some((token) =>
+    scope.includes(token)
+  );
+
+  const templates = mathLike
+    ? [
+        `Compute and simplify: (3/4) + (5/8). Show every step and write the result as a mixed number if needed.`,
+        `Solve for x: 5x - 12 = 33. Check your answer by substitution.`,
+        `Find the area and perimeter of a rectangle with length 12 cm and width 7 cm.`,
+        `Write and solve a proportion: 4 notebooks cost $10. How much do 9 notebooks cost?`,
+        `Factor completely: x^2 + 7x + 12.`,
+        `A train travels 180 km in 2.5 hours. Find the average speed in km/h.`,
+        `A store gives a 15% discount on a $48 item. What is the sale price and how much is saved?`,
+        `Convert 2.75 hours to minutes, then convert 165 minutes back to hours and minutes.`,
+        `Simplify: (2x^2y^3)(3xy^2).`,
+        `Find the slope of the line through points (2, 5) and (8, 17).`
+      ]
+    : languageLike
+      ? [
+          `Identify the claim, evidence, and warrant in this short paragraph, then rewrite it so the warrant is explicit.`,
+          `Rewrite a vague sentence into a precise definition using genus and differentia structure.`,
+          `Given a short argument, mark each premise and conclusion, then test whether the conclusion follows.`,
+          `Take a weak paragraph and improve coherence by adding transitions and removing redundancy.`,
+          `Classify three statements as descriptive, normative, or inferential, and justify each classification.`,
+          `Revise this sentence for grammatical correctness while preserving original meaning.`,
+          `Find one ambiguity in the prompt and rewrite it to remove the ambiguity.`,
+          `Construct a short persuasive response with a clear thesis and two supporting reasons.`,
+          `Convert an informal claim into a formal if-then statement and test a counterexample.`,
+          `Analyze a rhetorical device in a sample sentence and rewrite without that device.`
+        ]
+      : scienceLike
+        ? [
+            `Read a short experiment description and identify independent variable, dependent variable, and controls.`,
+            `Interpret a simple table of measurements and compute the mean and range.`,
+            `State one testable hypothesis from the scenario and identify what data would confirm or weaken it.`,
+            `Given two competing explanations, list one observation that would discriminate between them.`,
+            `Convert the narrative observation into a labeled diagram with variables and units.`,
+            `Identify one likely measurement error and propose a method to reduce it.`,
+            `From a brief dataset trend, predict the next value and justify your reasoning.`,
+            `Classify each statement as observation, inference, or theory-based claim.`,
+            `Write a concise conclusion paragraph that matches the evidence without overclaiming.`,
+            `Design a follow-up test with one changed parameter and expected outcome.`
+          ]
+        : [
+            `Break this scenario into knowns, unknowns, and assumptions, then solve for the unknown.`,
+            `Given three options, compare trade-offs and choose one with justification.`,
+            `Identify one common error someone might make here and show the corrected method.`,
+            `Apply the core concept to a new context and explain what stays structurally the same.`,
+            `Estimate a reasonable answer range before computing, then verify after solving.`,
+            `Represent the same problem as text, table, and diagram, and show consistency.`,
+            `Solve a multi-step version of the problem and label each intermediate result.`,
+            `Reverse-engineer the steps from final answer back to starting conditions.`,
+            `Write a short teach-back explanation aimed at a beginner.`,
+            `Create one new workbook-style question and solve it fully.`
+          ];
+
+  return Array.from({ length: count }, (_, index) => ({
+    prompt: `${templates[index % templates.length]} (${topic})`,
+    purpose: "Workbook-style pencil-and-paper practice",
+    practice_angle: "procedural_execution",
+    response_format: "open_ended"
+  }));
+};
 
 const buildPracticeItems = (
   topic: string,
@@ -231,7 +317,13 @@ const renderPracticeOnlyWorksheet = (
     ...wb.observation_tasks,
     ...wb.self_check_items
   ];
-  const angleLabels = listPracticeAngleLabels(practiceItems);
+  const workbookProblems = buildWorkbookProblems(
+    lessonPlan.topic_model.title,
+    Math.max(4, Math.min(8, Math.floor(wb.exercises.length / 2))),
+    lessonPlan.constitutional_alignment.primary_domain,
+    lessonPlan.constitutional_alignment.primary_subdomain
+  );
+  const keyLines = formatPracticeKeyLines(practiceItems);
 
   return [
     ...practiceTitleFromPlan(lessonPlan),
@@ -241,23 +333,26 @@ const renderPracticeOnlyWorksheet = (
     `You are working toward: ${learnerModel.target_knowledge_context}`,
     `This sheet emphasizes many problem types and solution angles for ${lessonPlan.topic_model.title}.`,
     "",
-    "## Problem Types Covered",
-    ...angleLabels.map((label) => `- ${label}`),
-    "",
     "## Guided Exercises",
-    formatItems(wb.exercises),
+    formatPracticeItems(wb.exercises),
     "",
     "## Applied Scenarios",
-    formatItems(wb.applied_scenarios ?? []),
+    formatPracticeItems(wb.applied_scenarios ?? []),
+    "",
+    "## Pencil-and-Paper Workbook Problems",
+    formatPracticeItems(workbookProblems),
     "",
     "## Observation / Application Tasks",
-    formatItems(wb.observation_tasks),
+    formatPracticeItems(wb.observation_tasks),
     "",
     "## Self-Check",
-    formatItems(wb.self_check_items),
+    formatPracticeItems(wb.self_check_items),
     "",
     "## Capability Checkpoint",
-    wb.capability_checkpoint
+    wb.capability_checkpoint,
+    "",
+    "## Problem Type Key",
+    ...keyLines
   ].join("\n");
 };
 

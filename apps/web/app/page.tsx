@@ -1,8 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import rehypeKatex from "rehype-katex";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import { normalizeWorksheetMarkdown } from "@/lib/normalize-worksheet-markdown";
 
 type Tab = "worksheet" | "plan" | "audit" | "prompt";
@@ -817,7 +819,12 @@ export default function HomePage() {
                   </button>
                 </div>
                 <article ref={worksheetRef} className="worksheet" style={worksheetArticleStyle}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{worksheetMarkdown}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {worksheetMarkdown}
+                  </ReactMarkdown>
                 </article>
               </>
             )}

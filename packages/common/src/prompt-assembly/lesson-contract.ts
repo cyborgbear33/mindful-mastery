@@ -11,6 +11,7 @@ import {
 } from "../lesson-types";
 import { buildPlacementContextLines } from "../normalization/normalize-request";
 import {
+  PRACTICE_PROBLEM_ANGLES,
   formatPracticeAngleOntologyForPrompt,
   listPracticeAngleLabels
 } from "../worksheet/practice-problem-ontology";
@@ -36,7 +37,10 @@ const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
     "cover many distinct practice problem angles from the ontology — not six generic prompts",
     "populate worksheet_blueprint with tagged practice_angle values on each item",
     "split core skill drills (Guided Exercises) from multi-step work (Applied Scenarios)",
-    "include a Problem Types Covered section listing the angles practiced on this sheet",
+    "include a dedicated Pencil-and-Paper Workbook Problems section with schoolbook-style exercises",
+    "tailor workbook-style problems to the selected domain and subdomain (for example arithmetic/algebra/geometry style for quadrivium math topics)",
+    "use compact italic type tags (for example _DR_, _PE_) before prompts and render a Problem Type Key at the bottom",
+    "do not print raw ontology identifiers such as definition_recall or distinction_judgment in student-facing prompts",
     "prioritize quantity, variety, and concrete use over exposition",
     "do not include core definitions, theoretical overview, or integration teaching sections"
   ],
@@ -50,7 +54,7 @@ const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
 const MODE_RENDER_INSTRUCTIONS: Record<WorksheetContentMode, string> = {
   full: "Render a complete student worksheet with both lesson information and practice problems.",
   practice_only:
-    "Render a practice-heavy worksheet. Keep orientation brief (2-4 lines). Cover many problem types and solution angles. Use Guided Exercises for core drills and Applied Scenarios for multi-step or contextual work. Omit teaching-heavy sections.",
+    "Render a practice-heavy worksheet. Keep orientation brief (2-4 lines). Cover many problem types and solution angles. Use Guided Exercises for core drills, Applied Scenarios for context, and Pencil-and-Paper Workbook Problems for schoolbook-style practice. Omit teaching-heavy sections.",
   information_only:
     "Render an information handout for teaching or reading. Include definitions, explanations, examples, and integration. Do not include any numbered practice prompts or blank answer spaces."
 };
@@ -168,10 +172,14 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
       ? [
           `Practice minimums: ${outputContract.practice_minimums.exercises} guided exercises, ${outputContract.practice_minimums.applied_scenarios} applied scenarios, ${outputContract.practice_minimums.observation_tasks} observation tasks, ${outputContract.practice_minimums.self_check_items} self-check items, at least ${outputContract.practice_minimums.min_practice_angles} distinct practice angles.`,
           "",
+          "Workbook section requirement: include real pencil-and-paper problems that look like school workbook items for the selected domain/subdomain.",
+          "",
           "Practice problem angle ontology (cover as many distinct angles as the minimum requires):",
           formatPracticeAngleOntologyForPrompt(),
           "",
-          "Tag each worksheet_blueprint item with practice_angle matching an ontology id. Render Problem Types Covered from those angles."
+          "Tag each worksheet_blueprint item with practice_angle matching an ontology id.",
+          "In student-facing prompts, render only short tags like _DR_ or _PE_ (not raw ids).",
+          "Render a Problem Type Key at the bottom mapping each short tag to its full label."
         ].join("\n")
       : "",
     "",
@@ -236,6 +244,8 @@ export const buildPlannerPrompt = (input: {
       ? [
           "For practice_only mode, still build the full lesson_blueprint layers internally, but make worksheet_blueprint dense with varied, concrete practice items.",
           "Each worksheet item must include practice_angle from the ontology. Use applied_scenarios for multi-step and contextual items.",
+          "Include enough concrete arithmetic/algebra-style items to support a Pencil-and-Paper Workbook Problems section in rendering.",
+          "Tune examples to the selected domain/subdomain instead of generic prompts.",
           "",
           "Practice problem angle ontology:",
           formatPracticeAngleOntologyForPrompt()
@@ -308,7 +318,7 @@ const extractAppliedScenarioSection = (worksheet: string): string =>
   extractSectionBody(worksheet, /^#{1,3}\s+.*applied scenarios.*$/im);
 
 const countProblemTypesListed = (worksheet: string): number => {
-  const body = extractSectionBody(worksheet, /^#{1,3}\s+.*problem types.*$/im);
+  const body = extractSectionBody(worksheet, /^#{1,3}\s+.*problem type key.*$/im);
   return (body.match(/^\s*[-*]\s+\S/gm) ?? []).length;
 };
 
@@ -404,6 +414,17 @@ export const evaluateWorksheetContract = (
       if (normalizedWorksheet.includes(marker)) {
         issues.push(`Practice-only mode must not include teaching section: ${marker}.`);
       }
+    }
+  }
+
+  if (contract.worksheet_content_mode === "practice_only") {
+    const rawOntologyIds = PRACTICE_PROBLEM_ANGLES
+      .map((angle) => angle.id)
+      .filter((id) => normalizedWorksheet.includes(id));
+    if (rawOntologyIds.length > 0) {
+      issues.push(
+        `Practice-only output must not expose raw ontology IDs: ${rawOntologyIds.slice(0, 5).join(", ")}.`
+      );
     }
   }
 

@@ -59,12 +59,13 @@ export const WORKSHEET_CONTENT_MODES: Record<WorksheetContentMode, WorksheetMode
       "Dense, varied exercises across many problem types — ideal for homework, review, warm-ups, or assessment.",
     required_sections: [
       "Brief Learner Orientation",
-      "Problem Types Covered",
       "Guided Exercises",
       "Applied Scenarios",
+      "Pencil-and-Paper Workbook Problems",
       "Observation / Application Tasks",
       "Self-Check",
-      "Capability Checkpoint"
+      "Capability Checkpoint",
+      "Problem Type Key"
     ],
     min_heading_count: 8,
     min_output_requirement_coverage: 0.75,

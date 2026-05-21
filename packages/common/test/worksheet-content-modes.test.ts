@@ -30,6 +30,8 @@ describe("worksheet content modes", () => {
     const practiceContract = buildWorksheetOutputContract("auto", "practice_only", "standard");
     expect(practiceContract.omit_information_sections).toBe(true);
     expect(practiceContract.required_sections).toContain("Applied Scenarios");
+    expect(practiceContract.required_sections).toContain("Pencil-and-Paper Workbook Problems");
+    expect(practiceContract.required_sections).toContain("Problem Type Key");
     expect(practiceContract.practice_minimums.min_practice_angles).toBe(8);
   });
 
@@ -46,8 +48,12 @@ describe("worksheet content modes", () => {
 
     expect(response.worksheet).toContain("# Fractions on a Number Line — Practice");
     expect(response.worksheet).not.toContain("## Worksheet Title");
-    expect(response.worksheet.toLowerCase()).toContain("problem types covered");
     expect(response.worksheet.toLowerCase()).toContain("applied scenarios");
+    expect(response.worksheet.toLowerCase()).toContain("pencil-and-paper workbook problems");
+    expect(response.worksheet).toContain("Solve for x");
+    expect(response.worksheet).toContain("area and perimeter");
+    expect(response.worksheet.toLowerCase()).toContain("problem type key");
+    expect(response.worksheet).not.toContain("definition_recall");
     expect(response.worksheet.toLowerCase()).not.toContain("core definitions");
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
   });

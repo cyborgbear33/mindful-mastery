@@ -50,12 +50,13 @@ Title pattern:
 
 Required rendered sections:
 - Brief Learner Orientation
-- Problem Types Covered
 - Guided Exercises
 - Applied Scenarios
+- Pencil-and-Paper Workbook Problems
 - Observation / Application Tasks
 - Self-Check
 - Capability Checkpoint
+- Problem Type Key
 
 Must **not** render teaching-heavy sections such as:
 - Core Definitions and Distinctions
@@ -74,7 +75,7 @@ Depth scaling:
 - introductory: lower counts, minimum 6 angles
 - advanced: higher counts, minimum 10 angles
 
-Each worksheet item should carry `practice_angle` from the runtime ontology (definition recall, distinction judgment, procedural execution, scenario application, transfer, error correction, and related angles). The renderer lists covered angles under **Problem Types Covered**.
+Each worksheet item should carry `practice_angle` from the runtime ontology (definition recall, distinction judgment, procedural execution, scenario application, transfer, error correction, and related angles). Student-facing prompts should use compact styled abbreviations (for example `_DR_`, `_PE_`) and map them in **Problem Type Key** at the bottom instead of printing raw ontology IDs.
 
 The renderer should prioritize quantity, variety, and concrete use over exposition.
 
@@ -116,6 +117,7 @@ Mode changes **rendering and minimum practice density**, not whether the system 
 When `practice_only` is selected, the planner must make `worksheet_blueprint` dense and varied:
 - tag items with `practice_angle`,
 - populate `applied_scenarios` for multi-step and contextual work,
+- include concrete workbook-style pencil-and-paper prompts (especially for quantitative domains),
 - cover many distinct angles from the practice problem ontology.
 
 When `information_only` is selected, teaching substance must live in lesson_blueprint layers; practice items may remain minimal in the JSON object but must not appear in rendered output.
