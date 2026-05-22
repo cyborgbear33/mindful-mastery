@@ -82,6 +82,7 @@ When `worksheet_content_mode` is provided, honor it during rendering:
 
 See `docs/runtime/worksheet-content-modes.md` for mode-specific section and practice minimum rules.
 For `practice_only`, prefer direct worksheet questions over instructional narration. Use compact prompt stems with clear answer targets (for example `7 + 8 = ____`, `Circle the verb`, `Label each state of matter item`) rather than meta prompts like "explain how...".
+When `worksheet_response_format` is not `auto`, every worksheet item must honor that format in both the JSON blueprint (`response_format`) and the rendered student-facing prompt.
 
 ## Completion check
 Before finalizing, ensure the output answers these questions:

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildPlannerPrompt,
   buildWorksheetOutputContract,
+  buildWorksheetResponseFormatPromptLines,
   evaluateWorksheetContract
 } from "../src/prompt-assembly/lesson-contract";
 import { createFakePipeline } from "../src/orchestrator/lesson-pipeline";
@@ -34,6 +36,67 @@ describe("worksheet content modes", () => {
     expect(practiceContract.required_sections).toContain("Pencil-and-Paper Workbook Problems");
     expect(practiceContract.required_sections).toContain("Problem Type Key");
     expect(practiceContract.practice_minimums.min_practice_angles).toBe(8);
+  });
+
+  it("includes response-format guidance in planner and render prompts", () => {
+    const fillInLines = buildWorksheetResponseFormatPromptLines("fill_in", { forPlanner: true });
+    expect(fillInLines.join("\n").toLowerCase()).toContain("fill-in-the-blank");
+    expect(fillInLines.join("\n")).toContain("response_format");
+
+    const plannerPrompt = buildPlannerPrompt({
+      normalizedRequest: {
+        request_id: "req-format-test",
+        timestamp: new Date().toISOString(),
+        topic: "Addition Facts",
+        requested_output_type: "worksheet",
+        requested_depth: "standard",
+        worksheet_response_format: "multiple_choice",
+        worksheet_content_mode: "practice_only",
+        user_constraints: [],
+        source_request_text: "Practice only multiple choice"
+      },
+      learnerModel: {
+        current_knowledge_context: "Can count to 20",
+        target_knowledge_context: "Can add within 20",
+        transformation_goal: "Move from counting to fluent addition",
+        readiness_level: "novice",
+        inference_confidence: "explicit"
+      },
+      guidanceSnippets: []
+    });
+
+    expect(plannerPrompt).toContain("Worksheet response format: multiple_choice");
+    expect(plannerPrompt).toContain("A) B) C) D)");
+  });
+
+  it("honors fill_in response format in practice_only worksheets", async () => {
+    const response = await createFakePipeline().generate({
+      topic: "Addition Facts",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "fill_in",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(response.worksheet).toMatch(/_{3,}/);
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
+  });
+
+  it("honors multiple_choice response format in practice_only worksheets", async () => {
+    const response = await createFakePipeline().generate({
+      topic: "Addition Facts",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "multiple_choice",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(response.worksheet).toMatch(/\bA\)\s/m);
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
   });
 
   it("generates a practice-only worksheet without teaching sections", async () => {

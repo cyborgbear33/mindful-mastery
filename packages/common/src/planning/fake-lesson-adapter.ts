@@ -5,7 +5,8 @@ import {
   NormalizedRequest,
   WorksheetResponseFormat,
   WorksheetContentMode,
-  WorksheetItem
+  WorksheetItem,
+  WorksheetItemResponseFormatSchema
 } from "../lesson-types";
 import {
   buildOntologyPracticeItems,
@@ -26,9 +27,18 @@ const formatItems = (items: { prompt: string; purpose: string }[]) =>
 const resolveItemResponseFormat = (
   requested: WorksheetResponseFormat,
   index: number
-): WorksheetResponseFormat => {
+): WorksheetItem["response_format"] => {
+  if (requested === "auto") {
+    const cycle: WorksheetItem["response_format"][] = [
+      "open_ended",
+      "fill_in",
+      "multiple_choice",
+      "true_false"
+    ];
+    return cycle[index % cycle.length] ?? "open_ended";
+  }
   if (requested === "mixed") {
-    const cycle: WorksheetResponseFormat[] = [
+    const cycle: WorksheetItem["response_format"][] = [
       "open_ended",
       "multiple_choice",
       "true_false",
@@ -38,8 +48,20 @@ const resolveItemResponseFormat = (
   }
   if (requested === "quiz") return "multiple_choice";
   if (requested === "test") return index % 3 === 0 ? "multiple_choice" : "open_ended";
-  return requested;
+  return WorksheetItemResponseFormatSchema.parse(requested);
 };
+
+const applyRequestedResponseFormat = (
+  items: WorksheetItem[],
+  requestedFormat: WorksheetResponseFormat
+): WorksheetItem[] =>
+  items.map((item, index) => ({
+    ...item,
+    response_format:
+      requestedFormat === "auto"
+        ? item.response_format ?? resolveItemResponseFormat("auto", index)
+        : resolveItemResponseFormat(requestedFormat, index)
+  }));
 
 const evaluateArithmeticExpressionFromPrompt = (prompt: string): number | null => {
   const expressionMatch = prompt.match(/([0-9()\s+\-×÷*/.]+)=\s*_{2,}/);
@@ -102,9 +124,13 @@ const cleanPracticePrompt = (prompt: string): string =>
 const renderPromptByResponseFormat = (
   prompt: string,
   requestedFormat: WorksheetResponseFormat,
-  itemIndex: number
+  itemIndex: number,
+  itemFormat?: WorksheetItem["response_format"]
 ): string => {
-  const format = resolveItemResponseFormat(requestedFormat, itemIndex);
+  const format =
+    requestedFormat === "auto"
+      ? itemFormat ?? resolveItemResponseFormat("auto", itemIndex)
+      : resolveItemResponseFormat(requestedFormat, itemIndex);
   switch (format) {
     case "multiple_choice":
       return [prompt, ...buildMultipleChoiceOptions(prompt, itemIndex)].join("\n   ");
@@ -132,7 +158,12 @@ const formatPracticeItems = (
   items
     .map((item, i) => {
       const cleanedPrompt = cleanPracticePrompt(item.prompt);
-      const formattedPrompt = renderPromptByResponseFormat(cleanedPrompt, requestedFormat, i);
+      const formattedPrompt = renderPromptByResponseFormat(
+        cleanedPrompt,
+        requestedFormat,
+        i,
+        item.response_format
+      );
       const label =
         section === "applied"
           ? "Scenario"
@@ -514,13 +545,17 @@ const buildPracticeOnlyBlueprint = (
     )
   }));
   const reflectionCount = Math.max(minimums.reflection_prompts, 1);
+  const requestedFormat = request.worksheet_response_format ?? "auto";
 
   return {
-    exercises,
-    applied_scenarios: appliedScenarios,
-    observation_tasks: observationTasks,
-    reflection_prompts: buildPracticeItems(request.topic, "reflection", reflectionCount),
-    self_check_items: selfCheckItems,
+    exercises: applyRequestedResponseFormat(exercises, requestedFormat),
+    applied_scenarios: applyRequestedResponseFormat(appliedScenarios, requestedFormat),
+    observation_tasks: applyRequestedResponseFormat(observationTasks, requestedFormat),
+    reflection_prompts: applyRequestedResponseFormat(
+      buildPracticeItems(request.topic, "reflection", reflectionCount),
+      requestedFormat
+    ),
+    self_check_items: applyRequestedResponseFormat(selfCheckItems, requestedFormat),
     capability_checkpoint: `Demonstrate mastery of ${request.topic} by completing guided exercises and applied scenarios across at least ${minimums.min_practice_angles} distinct problem types without copying earlier answers.`
   };
 };

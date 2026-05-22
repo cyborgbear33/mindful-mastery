@@ -6,6 +6,11 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { normalizeWorksheetMarkdown } from "@/lib/normalize-worksheet-markdown";
+import {
+  formatGenerationElapsed,
+  GenerationLoadingSnapshot,
+  getGenerationLoadingSnapshot
+} from "@/lib/generation-loading";
 
 type Tab = "worksheet" | "plan" | "audit" | "prompt";
 type Depth = "introductory" | "standard" | "advanced";
@@ -176,8 +181,7 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateLessonResponse | null>(null);
   const [tab, setTab] = useState<Tab>("worksheet");
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingPhaseIndex, setLoadingPhaseIndex] = useState(0);
+  const [loadingSnapshot, setLoadingSnapshot] = useState<GenerationLoadingSnapshot | null>(null);
   const subdomainFieldRef = useRef<HTMLDivElement | null>(null);
   const subdomainInputRef = useRef<HTMLInputElement | null>(null);
   const domainFieldRef = useRef<HTMLLabelElement | null>(null);
@@ -230,15 +234,23 @@ export default function HomePage() {
     });
   };
 
-  const loadingPhases = useMemo(
-    () => [
-      "Preparing lesson context",
-      "Planning worksheet structure",
-      "Building exercises and examples",
-      "Finalizing output"
-    ],
-    []
-  );
+  useEffect(() => {
+    if (!loading) {
+      setLoadingSnapshot(null);
+      loadingStartedAtRef.current = null;
+      return;
+    }
+
+    const tick = () => {
+      const start = loadingStartedAtRef.current ?? Date.now();
+      const elapsedMs = Date.now() - start;
+      setLoadingSnapshot(getGenerationLoadingSnapshot(worksheetContentMode, elapsedMs));
+    };
+
+    tick();
+    const timer = setInterval(tick, 400);
+    return () => clearInterval(timer);
+  }, [loading, worksheetContentMode]);
 
   useEffect(() => {
     setWorksheetHeaderDate(defaultWorksheetDateValue());
@@ -278,40 +290,6 @@ export default function HomePage() {
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
-
-  useEffect(() => {
-    if (!loading) {
-      setLoadingProgress(0);
-      setLoadingPhaseIndex(0);
-      loadingStartedAtRef.current = null;
-      return;
-    }
-
-    const progressProfile =
-      worksheetContentMode === "practice_only"
-        ? { maxProgress: 95, curveMs: 2800, phaseIntervalMs: 900 }
-        : worksheetContentMode === "information_only"
-          ? { maxProgress: 96, curveMs: 6000, phaseIntervalMs: 1200 }
-          : { maxProgress: 96, curveMs: 12000, phaseIntervalMs: 1700 };
-
-    const progressTimer = setInterval(() => {
-      const start = loadingStartedAtRef.current ?? Date.now();
-      const elapsedMs = Date.now() - start;
-      const projected = Math.round(
-        progressProfile.maxProgress * (1 - Math.exp(-elapsedMs / progressProfile.curveMs))
-      );
-      setLoadingProgress((prev) => Math.max(prev, Math.min(projected, progressProfile.maxProgress)));
-    }, 300);
-
-    const phaseTimer = setInterval(() => {
-      setLoadingPhaseIndex((prev) => (prev + 1) % loadingPhases.length);
-    }, progressProfile.phaseIntervalMs);
-
-    return () => {
-      clearInterval(progressTimer);
-      clearInterval(phaseTimer);
-    };
-  }, [loading, loadingPhases, worksheetContentMode]);
 
   useEffect(() => {
     if (!showPrintPreview) {
@@ -376,8 +354,7 @@ export default function HomePage() {
     const controller = new AbortController();
     generateAbortRef.current = controller;
     loadingStartedAtRef.current = Date.now();
-    setLoadingProgress(2);
-    setLoadingPhaseIndex(0);
+    setLoadingSnapshot(getGenerationLoadingSnapshot(worksheetContentMode, 0));
     setLoading(true);
     setError(null);
 
@@ -418,7 +395,11 @@ export default function HomePage() {
 
       const data = (await response.json()) as GenerateLessonResponse;
       setResult(data);
-      setLoadingProgress(100);
+      setLoadingSnapshot((current) =>
+        current
+          ? { ...current, progress: 100, phaseTitle: "Handout ready", phaseDetail: "Opening worksheet" }
+          : current
+      );
       setTab("worksheet");
       setCopyStatus("idle");
     } catch (err) {
@@ -654,6 +635,71 @@ export default function HomePage() {
           >
             {CONTENT_MODE_OPTIONS.map((option) => {
               const selected = worksheetContentMode === option.id;
+              const isPractice = option.id === "practice_only";
+
+              if (isPractice && selected) {
+                return (
+                  <div
+                    key={option.id}
+                    style={{
+                      ...contentModeCardStyle,
+                      borderColor: "#3d5afe",
+                      background: "#222a45",
+                      boxShadow: "0 0 0 1px #3d5afe"
+                    }}
+                  >
+                    <button
+                      type="button"
+                      aria-pressed
+                      onClick={() => setWorksheetContentMode(option.id)}
+                      style={contentModeCardButtonStyle}
+                    >
+                      <span style={{ fontSize: "1.35rem" }}>{option.icon}</span>
+                      <strong style={{ display: "block", marginTop: "0.35rem" }}>{option.label}</strong>
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: "0.35rem",
+                          color: "#b8bec7",
+                          fontSize: "0.9rem",
+                          lineHeight: 1.45
+                        }}
+                      >
+                        {option.description}
+                      </span>
+                    </button>
+                    <label style={{ display: "block", marginTop: "0.85rem" }}>
+                      Practice problem format
+                      <select
+                        value={worksheetResponseFormat}
+                        onChange={(e) =>
+                          setWorksheetResponseFormat(e.target.value as WorksheetResponseFormat)
+                        }
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        style={inputStyle}
+                      >
+                        {PRACTICE_FORMAT_OPTIONS.map((format) => (
+                          <option key={format.id} value={format.id}>
+                            {format.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span
+                        style={{
+                          display: "block",
+                          marginTop: "0.35rem",
+                          color: "#9aa0a6",
+                          fontSize: "0.85rem"
+                        }}
+                      >
+                        Controls answer style for every exercise (for example blanks, multiple choice, or short answer).
+                      </span>
+                    </label>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={option.id}
@@ -690,24 +736,6 @@ export default function HomePage() {
               );
             })}
           </div>
-          {worksheetContentMode === "practice_only" && (
-            <label style={{ display: "block", marginTop: "0.85rem" }}>
-              Practice problem format
-              <select
-                value={worksheetResponseFormat}
-                onChange={(e) =>
-                  setWorksheetResponseFormat(e.target.value as WorksheetResponseFormat)
-                }
-                style={inputStyle}
-              >
-                {PRACTICE_FORMAT_OPTIONS.map((format) => (
-                  <option key={format.id} value={format.id}>
-                    {format.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
         </fieldset>
         <label>
           Depth
@@ -879,18 +907,24 @@ export default function HomePage() {
                 Your generated worksheet will appear here.
               </p>
             )}
-            {loading && (
+            {loading && loadingSnapshot && (
               <div style={loadingOverlayStyle}>
                 <div style={loadingPanelStyle}>
-                  <strong style={{ display: "block", marginBottom: "0.35rem" }}>Generating handout…</strong>
-                  <span style={{ color: "#b8bec7", fontSize: "0.9rem" }}>
-                    {loadingPhases[loadingPhaseIndex]}
+                  <strong style={{ display: "block", marginBottom: "0.35rem" }}>
+                    {loadingSnapshot.phaseTitle}
+                  </strong>
+                  <span style={{ color: "#b8bec7", fontSize: "0.9rem", lineHeight: 1.45 }}>
+                    {loadingSnapshot.phaseDetail}
                   </span>
                   <div style={loadingBarTrackStyle}>
-                    <div style={{ ...loadingBarFillStyle, width: `${loadingProgress}%` }} />
+                    <div style={{ ...loadingBarFillStyle, width: `${loadingSnapshot.progress}%` }} />
                   </div>
-                  <span style={{ color: "#9aa0a6", fontSize: "0.82rem" }}>
-                    {loadingProgress}% (estimated)
+                  <span style={{ color: "#9aa0a6", fontSize: "0.82rem", lineHeight: 1.45 }}>
+                    {formatGenerationElapsed(
+                      Date.now() - (loadingStartedAtRef.current ?? Date.now())
+                    )}
+                    {" · "}
+                    {loadingSnapshot.statusLine}
                   </span>
                 </div>
               </div>
@@ -980,6 +1014,16 @@ const contentModeCardStyle: React.CSSProperties = {
   border: "1px solid #3a3f4b",
   borderRadius: 8,
   color: "#e8eaed"
+};
+
+const contentModeCardButtonStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "left",
+  background: "transparent",
+  border: "none",
+  color: "inherit",
+  padding: 0,
+  cursor: "pointer"
 };
 
 const suggestionPanelStyle: React.CSSProperties = {

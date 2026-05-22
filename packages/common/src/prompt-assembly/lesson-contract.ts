@@ -7,7 +7,8 @@ import {
   ReasoningContext,
   WorksheetContentMode,
   WorksheetItem,
-  WorksheetOutputContract
+  WorksheetOutputContract,
+  WorksheetResponseFormat
 } from "../lesson-types";
 import { buildPlacementContextLines } from "../normalization/normalize-request";
 import {
@@ -59,6 +60,61 @@ const MODE_RENDER_INSTRUCTIONS: Record<WorksheetContentMode, string> = {
     "Render a practice-heavy worksheet. Keep orientation brief (2-4 lines). Cover many problem types and solution angles. Use Guided Exercises for core drills, Applied Scenarios for context, and Pencil-and-Paper Workbook Problems for schoolbook-style practice. Omit teaching-heavy sections.",
   information_only:
     "Render an information handout for teaching or reading. Include definitions, explanations, examples, and integration. Do not include any numbered practice prompts or blank answer spaces."
+};
+
+export const describeWorksheetResponseFormat = (format: WorksheetResponseFormat): string => {
+  switch (format) {
+    case "auto":
+      return "Choose the most natural response format per item; a mix of styles is allowed when it serves the task.";
+    case "open_ended":
+      return "Short-answer prompts with space for a written response. Do not use A-D option lists.";
+    case "fill_in":
+      return "Fill-in-the-blank prompts with visible blanks (____ or ________) for the student to complete.";
+    case "multiple_choice":
+      return "Multiple-choice prompts with labeled options A) B) C) D) and one best answer.";
+    case "true_false":
+      return "True/False prompts phrased as statements the student must mark true or false.";
+    case "mixed":
+      return "Deliberately vary item formats across open-ended, fill-in, multiple choice, and true/false.";
+    case "quiz":
+      return "Quiz-style set emphasizing concise multiple-choice stems with A-D options.";
+    case "test":
+      return "Test-style set mixing multiple-choice and open-ended prompts with exam-like density.";
+    default:
+      return "Honor the requested response format in every practice item.";
+  }
+};
+
+export const buildWorksheetResponseFormatPromptLines = (
+  format: WorksheetResponseFormat,
+  options?: { forPlanner?: boolean }
+): string[] => {
+  const lines = [`Worksheet response format: ${format}`, describeWorksheetResponseFormat(format)];
+
+  if (format === "auto") {
+    return lines;
+  }
+
+  lines.push(
+    options?.forPlanner
+      ? "Set response_format on every worksheet_blueprint item to honor this request (vary item formats only when mixed, quiz, or test is requested)."
+      : "Render every practice prompt in this format. Do not fall back to generic open-ended prose when a different format was requested."
+  );
+
+  if (format === "fill_in") {
+    lines.push("Student-facing prompts must include visible blank markers such as ____ or ________.");
+  }
+  if (format === "multiple_choice" || format === "quiz") {
+    lines.push("Student-facing prompts must include A) B) C) D) options beneath each stem.");
+  }
+  if (format === "true_false") {
+    lines.push('Student-facing prompts must include the words "True or False" or "True/False".');
+  }
+  if (format === "mixed" || format === "test") {
+    lines.push("Cover more than one response format across the worksheet set as the format name implies.");
+  }
+
+  return lines;
 };
 
 export type BuildPromptPackageInput = {
@@ -138,7 +194,7 @@ export const buildPromptPackage = (input: BuildPromptPackageInput): PromptPackag
     `Output type: worksheet (student-facing Markdown)`,
     `Worksheet content mode: ${modeDefinition.label} (${contentMode})`,
     `Depth: ${input.normalizedRequest.requested_depth}`,
-    `Worksheet response format: ${input.normalizedRequest.worksheet_response_format}`,
+    ...buildWorksheetResponseFormatPromptLines(input.normalizedRequest.worksheet_response_format),
     input.normalizedRequest.explicit_audience
       ? `Audience: ${input.normalizedRequest.explicit_audience}`
       : "",
@@ -233,6 +289,9 @@ export const buildPlannerPrompt = (input: {
     `Output type: ${input.normalizedRequest.requested_output_type}`,
     `Worksheet content mode: ${modeDefinition.label} (${modeDefinition.mode})`,
     `Depth: ${input.normalizedRequest.requested_depth}`,
+    ...buildWorksheetResponseFormatPromptLines(input.normalizedRequest.worksheet_response_format, {
+      forPlanner: true
+    }),
     `Source request:\n${input.normalizedRequest.source_request_text}`,
     "",
     "Worksheet blueprint minimums for this mode:",
