@@ -67,6 +67,7 @@ The AI must know or infer:
 - and any constraints on format or tone.
 
 When `worksheet_content_mode` is set, the planner must still build the full lesson object internally, but the renderer must follow the mode rules in `docs/runtime/worksheet-content-modes.md`.
+When mode is `practice_only`, prompts must be concrete student tasks (problem statements with answer targets), not meta instructions about how to think.
 
 ---
 

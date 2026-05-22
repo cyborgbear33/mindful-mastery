@@ -16,7 +16,7 @@ import {
 describe("worksheet content modes", () => {
   it("defines teacher-friendly mode metadata", () => {
     expect(getWorksheetModeDefinition("full").practice_minimums.exercises).toBe(6);
-    expect(getWorksheetModeDefinition("practice_only").practice_minimums.exercises).toBe(12);
+    expect(getWorksheetModeDefinition("practice_only").practice_minimums.exercises).toBe(10);
     expect(getWorksheetModeDefinition("information_only").omit_practice_sections).toBe(true);
     expect(PRACTICE_PROBLEM_ANGLES.length).toBeGreaterThanOrEqual(10);
   });
@@ -51,8 +51,13 @@ describe("worksheet content modes", () => {
     expect(response.worksheet).not.toContain("## Worksheet Title");
     expect(response.worksheet.toLowerCase()).toContain("applied scenarios");
     expect(response.worksheet.toLowerCase()).toContain("pencil-and-paper workbook problems");
-    expect(response.worksheet).toContain("Solve for $x$");
-    expect(response.worksheet).toContain("area and perimeter");
+    expect(response.worksheet).toMatch(/\d+\s*[+\-×÷]\s*\d+\s*=\s*____/);
+    expect(response.worksheet).not.toContain("Explain Fractions on a Number Line in your own words");
+    expect(response.worksheet).toMatch(/Word problem:|Two-step problem:/);
+    expect(response.worksheet).toContain("**Problem:**");
+    expect(response.worksheet).toContain("**Scenario:**");
+    expect(response.worksheet).toContain("Store scenario:");
+    expect(response.worksheet).toContain("Recipe scenario:");
     expect(response.worksheet.toLowerCase()).toContain("problem type key");
     expect(response.worksheet).not.toContain("definition_recall");
     expect(response.worksheet.toLowerCase()).not.toContain("core definitions");

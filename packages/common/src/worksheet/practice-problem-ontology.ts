@@ -196,7 +196,7 @@ export const getScaledPracticeMinimums = (
   switch (depth) {
     case "introductory":
       return {
-        exercises: 10,
+        exercises: 8,
         applied_scenarios: 3,
         observation_tasks: 3,
         reflection_prompts: 1,
@@ -214,7 +214,7 @@ export const getScaledPracticeMinimums = (
       };
     default:
       return {
-        exercises: 12,
+        exercises: 10,
         applied_scenarios: 4,
         observation_tasks: 4,
         reflection_prompts: 1,

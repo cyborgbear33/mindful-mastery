@@ -10,7 +10,19 @@ const projectRoot = resolve(__dirname, "../../..");
 loadDotenv({ path: resolve(projectRoot, ".env"), override: true });
 
 const bootstrap = async (): Promise<void> => {
+  let lastTransportWarningAt = 0;
   process.on("unhandledRejection", (reason) => {
+    const message = reason instanceof Error ? reason.message : String(reason);
+    if (/ECONNRESET|ConnectError: \[aborted\]|socket hang up/i.test(message)) {
+      const now = Date.now();
+      if (now - lastTransportWarningAt > 10000) {
+        lastTransportWarningAt = now;
+        console.warn(
+          "Transient model transport error (ECONNRESET). Request path will retry/fallback automatically."
+        );
+      }
+      return;
+    }
     console.error("Unhandled promise rejection in API process:", reason);
   });
 

@@ -81,6 +81,7 @@ When `worksheet_content_mode` is provided, honor it during rendering:
 - `information_only`: teaching handout without student exercises
 
 See `docs/runtime/worksheet-content-modes.md` for mode-specific section and practice minimum rules.
+For `practice_only`, prefer direct worksheet questions over instructional narration. Use compact prompt stems with clear answer targets (for example `7 + 8 = ____`, `Circle the verb`, `Label each state of matter item`) rather than meta prompts like "explain how...".
 
 ## Completion check
 Before finalizing, ensure the output answers these questions:

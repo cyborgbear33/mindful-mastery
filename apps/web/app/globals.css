@@ -64,12 +64,20 @@
   margin-bottom: 0.35rem;
 }
 
+html:has(body.print-preview-active),
+body.print-preview-active {
+  overflow: hidden;
+  height: 100%;
+}
+
 .print-preview-overlay {
   position: fixed;
   inset: 0;
   z-index: 10000;
   background: #d8d8d8;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 24px 16px 48px;
 }
 
@@ -143,12 +151,26 @@
   margin: 20pt 0 10pt;
   text-transform: uppercase;
   letter-spacing: 0.6px;
+  break-after: avoid;
+  page-break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .print-preview-page h3 {
   font-size: 12.5pt;
   font-weight: 700;
   margin: 16pt 0 7pt;
+  break-after: avoid;
+  page-break-after: avoid;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-preview-page h2 + *,
+.print-preview-page h3 + * {
+  break-before: avoid;
+  page-break-before: avoid;
 }
 
 .print-preview-page p {
@@ -218,6 +240,14 @@
 
 .print-preview-page li {
   margin-bottom: 6pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.print-preview-page p,
+.print-preview-page blockquote {
+  orphans: 3;
+  widows: 3;
 }
 
 .print-preview-page .katex {
@@ -234,6 +264,17 @@
 }
 
 @media print {
+  @page {
+    size: letter;
+    margin: 0.65in 0.75in;
+  }
+
+  html,
+  body {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
   body.print-preview-active > *:not(.print-preview-overlay) {
     display: none !important;
   }
@@ -255,5 +296,37 @@
     margin: 0;
     box-shadow: none;
     padding: 0;
+  }
+
+  .print-preview-page h1 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .print-preview-page h2,
+  .print-preview-page h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-preview-page h2 + *,
+  .print-preview-page h3 + * {
+    break-before: avoid;
+    page-break-before: avoid;
+  }
+
+  .print-preview-page pre,
+  .print-preview-page table,
+  .print-preview-page li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-preview-page p,
+  .print-preview-page blockquote {
+    orphans: 3;
+    widows: 3;
   }
 }

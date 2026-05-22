@@ -60,14 +60,22 @@ describe("buildPromptPackage", () => {
   });
 });
 
-describe("practice-only fast path", () => {
-  it("skips model calls for practice_only worksheet generation", async () => {
+describe("practice-only generation path", () => {
+  it("uses model planning and deterministic rendering for practice_only with non-fake adapters", async () => {
     class CountingAdapter extends LessonModelAdapter {
-      callCount = 0;
+      planCalls = 0;
+      renderCalls = 0;
 
-      async generate(_input: GenerateModelInput): Promise<string> {
-        this.callCount += 1;
-        throw new Error("Model should not be called in fast practice-only path");
+      async generate(input: GenerateModelInput): Promise<string> {
+        if (input.stage === "plan") {
+          this.planCalls += 1;
+          return JSON.stringify(input.reasoningContext?.lesson_plan);
+        }
+        if (input.stage === "render") {
+          this.renderCalls += 1;
+          return "## Guided Exercises\n\n1. Placeholder item";
+        }
+        return "{}";
       }
     }
 
@@ -78,15 +86,98 @@ describe("practice-only fast path", () => {
       topic: "Fractions on a Number Line",
       requested_output_type: "worksheet",
       explicit_domain: "quadrivium",
+      explicit_subdomain: "proportional_reasoning",
       requested_depth: "standard",
       worksheet_response_format: "auto",
       worksheet_content_mode: "practice_only",
       user_constraints: []
     });
 
-    expect(adapter.callCount).toBe(0);
+    expect(adapter.planCalls).toBeGreaterThan(0);
+    expect(adapter.renderCalls).toBe(0);
     expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
-    expect(response.worksheet).toContain("Pencil-and-Paper Workbook Problems");
+    expect(response.reasoning_context.lesson_plan.generation_context.explicit_subdomain).toBe(
+      "proportional_reasoning"
+    );
+  });
+
+  it("keeps deterministic fast path behavior for fake adapter", async () => {
+    const { createFakePipeline } = await import("../src/orchestrator/lesson-pipeline");
+    const response = await createFakePipeline({ useDeterministicPlan: false }).generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "standard",
+      worksheet_response_format: "multiple_choice",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(response.quality_metrics.worksheet_contract_valid).toBe(true);
+    expect(response.worksheet).toMatch(/\bA\)\s+/);
+    expect(response.worksheet).toContain("Response format emphasis: multiple_choice.");
+  });
+
+  it("sanitizes malformed latex braces in deterministic practice rendering", async () => {
+    class MalformedPlanAdapter extends LessonModelAdapter {
+      async generate(input: GenerateModelInput): Promise<string> {
+        if (input.stage === "plan") {
+          const plan = structuredClone(input.reasoningContext?.lesson_plan);
+          if (!plan) throw new Error("Missing plan context");
+          plan.lesson_blueprint.worksheet_blueprint.exercises[0].prompt =
+            "\\dfrac{2\\frac{1}{3}}{5\\frac{4}{5}}} \\equiv \\dfrac{?}{174}";
+          return JSON.stringify(plan);
+        }
+        throw new Error("Render model call should be skipped for practice_only deterministic rendering");
+      }
+    }
+
+    const pipeline = new LessonPipeline(new MalformedPlanAdapter(), { useDeterministicPlan: false });
+    const response = await pipeline.generate({
+      topic: "Proportional Reasoning",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      explicit_subdomain: "proportional_reasoning",
+      requested_depth: "standard",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(response.worksheet).not.toContain("\\dfrac{2\\frac{1}{3}}{5\\frac{4}{5}}} \\equiv");
+    expect(response.worksheet).not.toContain("}}} \\equiv");
+  });
+
+  it("changes practice-only output by requested depth", async () => {
+    const { createFakePipeline } = await import("../src/orchestrator/lesson-pipeline");
+    const pipeline = createFakePipeline({ useDeterministicPlan: false });
+
+    const introductory = await pipeline.generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "introductory",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    const advanced = await pipeline.generate({
+      topic: "Fractions on a Number Line",
+      requested_output_type: "worksheet",
+      explicit_domain: "quadrivium",
+      requested_depth: "advanced",
+      worksheet_response_format: "auto",
+      worksheet_content_mode: "practice_only",
+      user_constraints: []
+    });
+
+    expect(introductory.worksheet).toContain("Depth target: introductory");
+    expect(advanced.worksheet).toContain("Depth target: advanced");
+    expect(advanced.worksheet).not.toBe(introductory.worksheet);
+    expect(advanced.lesson_plan.lesson_blueprint.worksheet_blueprint.exercises.length).toBeGreaterThan(
+      introductory.lesson_plan.lesson_blueprint.worksheet_blueprint.exercises.length
+    );
   });
 
   it("uses planning call but skips render model call for information_only", async () => {

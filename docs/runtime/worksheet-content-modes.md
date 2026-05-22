@@ -64,7 +64,7 @@ Must **not** render teaching-heavy sections such as:
 - Integration teaching blocks
 
 Practice minimums at standard depth:
-- 12 guided exercises
+- 10 guided exercises
 - 4 applied scenarios
 - 4 observation tasks
 - 1 reflection prompt (planner JSON only; not rendered as a teaching section)
@@ -78,6 +78,10 @@ Depth scaling:
 Each worksheet item should carry `practice_angle` from the runtime ontology (definition recall, distinction judgment, procedural execution, scenario application, transfer, error correction, and related angles). Student-facing prompts should use compact styled abbreviations (for example `_DR_`, `_PE_`) and map them in **Problem Type Key** at the bottom instead of printing raw ontology IDs.
 
 The renderer should prioritize quantity, variety, and concrete use over exposition.
+Guided practice prompts must be actual student problems, not meta directions. For example:
+- math: `5 + 5 = ____`, `12 ÷ 3 = ____`
+- language: `Underline the noun in this sentence...`
+- science: `Label each item as solid, liquid, or gas...`
 
 ### 3. `information_only`
 Render a teaching or reading handout without student exercises.

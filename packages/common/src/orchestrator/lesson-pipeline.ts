@@ -66,14 +66,18 @@ export class LessonPipeline {
   async generate(input: LessonRequest): Promise<GenerateLessonResponse> {
     const normalizedRequest = normalizeRequest(input);
     const learnerModel = inferLearnerModel(normalizedRequest);
-    const useFastPracticeOnlyPath =
+    const isPracticeOnlyWorksheet =
       normalizedRequest.requested_output_type === "worksheet" &&
       normalizedRequest.worksheet_content_mode === "practice_only";
+    const useFastPracticeOnlyPath =
+      isPracticeOnlyWorksheet && this.modelAdapter instanceof FakeLessonModelAdapter;
+    const useFastPracticeOnlyRenderPath =
+      isPracticeOnlyWorksheet && !useFastPracticeOnlyPath;
     const useFastInformationOnlyRenderPath =
       normalizedRequest.requested_output_type === "worksheet" &&
       normalizedRequest.worksheet_content_mode === "information_only";
 
-    const { snippets, filesLoaded } = useFastPracticeOnlyPath
+    const { snippets, filesLoaded } = isPracticeOnlyWorksheet
       ? { snippets: [], filesLoaded: [] }
       : await this.getGuidanceSnippetsCached();
 
@@ -144,6 +148,16 @@ export class LessonPipeline {
         ...(lessonPlan.quality_controls.inference_assumptions ?? []),
         "Fast practice-only path used deterministic rendering for lower latency."
       ];
+    } else if (useFastPracticeOnlyRenderPath) {
+      worksheet = renderWorksheetFromPlan(
+        lessonPlan,
+        learnerModel,
+        normalizedRequest.worksheet_content_mode
+      );
+      lessonPlan.quality_controls.inference_assumptions = [
+        ...(lessonPlan.quality_controls.inference_assumptions ?? []),
+        "Practice-only used model planning with deterministic rendering to reduce latency."
+      ];
     } else if (useFastInformationOnlyRenderPath) {
       worksheet = renderWorksheetFromPlan(
         lessonPlan,
@@ -181,7 +195,12 @@ export class LessonPipeline {
 
     let contractEval = evaluateWorksheetContract(worksheet, reasoningContext);
 
-    if (!contractEval.valid && !useFastPracticeOnlyPath && !useFastInformationOnlyRenderPath) {
+    if (
+      !contractEval.valid &&
+      !useFastPracticeOnlyPath &&
+      !useFastPracticeOnlyRenderPath &&
+      !useFastInformationOnlyRenderPath
+    ) {
       for (let attempt = 0; attempt < this.maxRenderRepairAttempts; attempt += 1) {
         renderRepairAttempted = true;
         const repairPrompt = buildRepairPrompt({

@@ -156,18 +156,20 @@ function resolveSubdomainValue(
 export default function HomePage() {
   const [topicFocus, setTopicFocus] = useState("");
   const [worksheetHeaderName, setWorksheetHeaderName] = useState("");
-  const [worksheetHeaderDate, setWorksheetHeaderDate] = useState(defaultWorksheetDateValue);
+  const [worksheetHeaderDate, setWorksheetHeaderDate] = useState("");
   const [worksheetHeaderDescription, setWorksheetHeaderDescription] = useState("");
   const [currentKnowledgeContext, setCurrentKnowledgeContext] = useState("");
   const [depth, setDepth] = useState<Depth>("standard");
   const [domain, setDomain] = useState<DomainId | "">("");
   const [subdomainInput, setSubdomainInput] = useState("");
+  const [subdomainFilter, setSubdomainFilter] = useState("");
   const [showSubdomainSuggestions, setShowSubdomainSuggestions] = useState(false);
   const [worksheetResponseFormat, setWorksheetResponseFormat] =
     useState<WorksheetResponseFormat>("auto");
   const [worksheetContentMode, setWorksheetContentMode] =
     useState<WorksheetContentMode>("full");
   const [ontology, setOntology] = useState<DomainOntology | null>(null);
+  const [ontologyStatus, setOntologyStatus] = useState<"loading" | "ready" | "error">("loading");
   const [loading, setLoading] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
@@ -176,7 +178,10 @@ export default function HomePage() {
   const [tab, setTab] = useState<Tab>("worksheet");
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingPhaseIndex, setLoadingPhaseIndex] = useState(0);
-  const subdomainBlurTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const subdomainFieldRef = useRef<HTMLDivElement | null>(null);
+  const subdomainInputRef = useRef<HTMLInputElement | null>(null);
+  const domainFieldRef = useRef<HTMLLabelElement | null>(null);
+  const shouldAutoOpenSubdomainRef = useRef(false);
   const generateAbortRef = useRef<AbortController | null>(null);
   const loadingStartedAtRef = useRef<number | null>(null);
 
@@ -201,14 +206,29 @@ export default function HomePage() {
   }, [ontology, domain]);
 
   const filteredSubdomainOptions = useMemo(() => {
-    const query = subdomainInput.trim().toLowerCase();
+    const query = subdomainFilter.trim().toLowerCase();
     if (!query) return subdomainOptions;
     return subdomainOptions.filter(
       (item) =>
         item.label.toLowerCase().includes(query) ||
         item.id.toLowerCase().includes(query)
     );
-  }, [subdomainInput, subdomainOptions]);
+  }, [subdomainFilter, subdomainOptions]);
+
+  const openSubdomainSuggestions = () => {
+    if (domain && subdomainOptions.length > 0) {
+      setShowSubdomainSuggestions(true);
+    }
+  };
+
+  const prepareSubdomainBrowse = () => {
+    if (!domain || subdomainOptions.length === 0) return;
+    setSubdomainFilter("");
+    openSubdomainSuggestions();
+    requestAnimationFrame(() => {
+      subdomainInputRef.current?.select();
+    });
+  };
 
   const loadingPhases = useMemo(
     () => [
@@ -221,7 +241,12 @@ export default function HomePage() {
   );
 
   useEffect(() => {
+    setWorksheetHeaderDate(defaultWorksheetDateValue());
+  }, []);
+
+  useEffect(() => {
     const loadOntology = async () => {
+      setOntologyStatus("loading");
       try {
         const response = await fetch(`${API_URL}/ontology`);
         if (!response.ok) {
@@ -229,14 +254,29 @@ export default function HomePage() {
         }
         const data = (await response.json()) as DomainOntology;
         setOntology(data);
+        setOntologyStatus("ready");
       } catch {
         setOntology(null);
+        setOntologyStatus("error");
       }
     };
 
     loadOntology().catch(() => {
-      // handled by local state update
+      setOntology(null);
+      setOntologyStatus("error");
     });
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (subdomainFieldRef.current?.contains(target)) return;
+      if (domainFieldRef.current?.contains(target)) return;
+      setShowSubdomainSuggestions(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
   }, []);
 
   useEffect(() => {
@@ -296,15 +336,31 @@ export default function HomePage() {
 
   useEffect(() => {
     setSubdomainInput("");
+    setSubdomainFilter("");
     setShowSubdomainSuggestions(false);
+    shouldAutoOpenSubdomainRef.current = Boolean(domain);
   }, [domain]);
+
+  useEffect(() => {
+    if (
+      !shouldAutoOpenSubdomainRef.current ||
+      !domain ||
+      ontologyStatus !== "ready" ||
+      subdomainOptions.length === 0
+    ) {
+      return;
+    }
+
+    shouldAutoOpenSubdomainRef.current = false;
+    const frame = window.requestAnimationFrame(() => {
+      setShowSubdomainSuggestions(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [domain, ontologyStatus, subdomainOptions.length]);
 
   useEffect(() => {
     return () => {
       document.body.classList.remove("print-preview-active");
-      if (subdomainBlurTimeout.current) {
-        clearTimeout(subdomainBlurTimeout.current);
-      }
       generateAbortRef.current?.abort();
     };
   }, []);
@@ -464,7 +520,7 @@ export default function HomePage() {
           </label>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
-          <label>
+          <label ref={domainFieldRef}>
             Domain
             <RequiredMark />
             <select
@@ -484,52 +540,90 @@ export default function HomePage() {
               <option value="integration_theory_of_all">Integration</option>
             </select>
           </label>
-          <label style={{ position: "relative" }}>
-            Subdomain
-            <RecommendedHint />
-            <input
-              value={subdomainInput}
-              onChange={(e) => {
-                setSubdomainInput(e.target.value);
-                setShowSubdomainSuggestions(true);
-              }}
-              onFocus={() => setShowSubdomainSuggestions(true)}
-              onBlur={() => {
-                subdomainBlurTimeout.current = setTimeout(() => {
-                  setShowSubdomainSuggestions(false);
-                }, 150);
-              }}
-              placeholder="Search or type a subdomain"
-              style={inputStyle}
-              autoComplete="off"
-            />
-            <span style={{ display: "block", marginTop: "0.35rem", color: "#9aa0a6", fontSize: "0.85rem" }}>
-              Recommended scope within the selected domain.
-            </span>
-            {showSubdomainSuggestions && subdomainOptions.length > 0 && (
-              <div style={suggestionPanelStyle}>
-                {filteredSubdomainOptions.length === 0 && (
-                  <div style={suggestionStyle}>
-                    No match. Your typed text will be used.
+          <div
+            ref={subdomainFieldRef}
+            style={{
+              position: "relative",
+              zIndex: showSubdomainSuggestions ? 50 : undefined
+            }}
+          >
+            <label>
+              Subdomain
+              <RecommendedHint />
+              <div style={{ position: "relative" }}>
+                <input
+                  ref={subdomainInputRef}
+                  value={subdomainInput}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setSubdomainInput(nextValue);
+                    setSubdomainFilter(nextValue);
+                    openSubdomainSuggestions();
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    prepareSubdomainBrowse();
+                    if (document.activeElement === e.currentTarget) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onFocus={prepareSubdomainBrowse}
+                  placeholder={
+                    domain ? "Search or pick a subdomain" : "Select a domain first"
+                  }
+                  style={inputStyle}
+                  autoComplete="off"
+                  disabled={!domain}
+                  role="combobox"
+                  aria-expanded={showSubdomainSuggestions}
+                  aria-autocomplete="list"
+                  aria-controls={
+                    showSubdomainSuggestions ? "subdomain-suggestion-list" : undefined
+                  }
+                />
+                {domain && showSubdomainSuggestions && subdomainOptions.length > 0 && (
+                  <div
+                    id="subdomain-suggestion-list"
+                    style={suggestionPanelStyle}
+                    role="listbox"
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    {filteredSubdomainOptions.length === 0 && (
+                      <div style={suggestionStyle}>
+                        No match. Your typed text will be used.
+                      </div>
+                    )}
+                    {filteredSubdomainOptions.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        role="option"
+                        style={suggestionButtonStyle}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setSubdomainInput(item.label);
+                          setSubdomainFilter("");
+                          setShowSubdomainSuggestions(false);
+                        }}
+                      >
+                        {item.label} (c{item.complexity_index})
+                      </button>
+                    ))}
                   </div>
                 )}
-                {filteredSubdomainOptions.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    style={suggestionButtonStyle}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setSubdomainInput(item.label);
-                      setShowSubdomainSuggestions(false);
-                    }}
-                  >
-                    {item.label} (c{item.complexity_index})
-                  </button>
-                ))}
               </div>
-            )}
-          </label>
+            </label>
+            <span style={{ display: "block", marginTop: "0.35rem", color: "#9aa0a6", fontSize: "0.85rem" }}>
+              {!domain && "Choose a domain to see subdomain suggestions."}
+              {domain && ontologyStatus === "loading" && "Loading subdomain list…"}
+              {domain && ontologyStatus === "error" &&
+                "Could not load suggestions — typed text will still be used."}
+              {domain && ontologyStatus === "ready" && subdomainOptions.length === 0 &&
+                "No catalogued subdomains for this domain — type your own."}
+              {domain && ontologyStatus === "ready" && subdomainOptions.length > 0 &&
+                "Opens after domain selection, or click to browse and type to filter."}
+            </span>
+          </div>
           <label>
             Topic focus
             <RecommendedHint />
@@ -560,59 +654,6 @@ export default function HomePage() {
           >
             {CONTENT_MODE_OPTIONS.map((option) => {
               const selected = worksheetContentMode === option.id;
-              const isPractice = option.id === "practice_only";
-
-              if (isPractice && selected) {
-                return (
-                  <div
-                    key={option.id}
-                    style={{
-                      ...contentModeCardStyle,
-                      borderColor: "#3d5afe",
-                      background: "#222a45",
-                      boxShadow: "0 0 0 1px #3d5afe"
-                    }}
-                  >
-                    <button
-                      type="button"
-                      aria-pressed
-                      onClick={() => setWorksheetContentMode(option.id)}
-                      style={contentModeCardButtonStyle}
-                    >
-                      <span style={{ fontSize: "1.35rem" }}>{option.icon}</span>
-                      <strong style={{ display: "block", marginTop: "0.35rem" }}>{option.label}</strong>
-                      <span
-                        style={{
-                          display: "block",
-                          marginTop: "0.35rem",
-                          color: "#b8bec7",
-                          fontSize: "0.9rem",
-                          lineHeight: 1.45
-                        }}
-                      >
-                        {option.description}
-                      </span>
-                    </button>
-                    <label style={{ display: "block", marginTop: "0.85rem" }}>
-                      Practice problem format
-                      <select
-                        value={worksheetResponseFormat}
-                        onChange={(e) =>
-                          setWorksheetResponseFormat(e.target.value as WorksheetResponseFormat)
-                        }
-                        style={inputStyle}
-                      >
-                        {PRACTICE_FORMAT_OPTIONS.map((format) => (
-                          <option key={format.id} value={format.id}>
-                            {format.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
-                );
-              }
-
               return (
                 <button
                   key={option.id}
@@ -649,6 +690,24 @@ export default function HomePage() {
               );
             })}
           </div>
+          {worksheetContentMode === "practice_only" && (
+            <label style={{ display: "block", marginTop: "0.85rem" }}>
+              Practice problem format
+              <select
+                value={worksheetResponseFormat}
+                onChange={(e) =>
+                  setWorksheetResponseFormat(e.target.value as WorksheetResponseFormat)
+                }
+                style={inputStyle}
+              >
+                {PRACTICE_FORMAT_OPTIONS.map((format) => (
+                  <option key={format.id} value={format.id}>
+                    {format.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </fieldset>
         <label>
           Depth
@@ -923,28 +982,18 @@ const contentModeCardStyle: React.CSSProperties = {
   color: "#e8eaed"
 };
 
-const contentModeCardButtonStyle: React.CSSProperties = {
-  width: "100%",
-  textAlign: "left",
-  padding: 0,
-  border: "none",
-  background: "transparent",
-  color: "inherit",
-  cursor: "pointer"
-};
-
 const suggestionPanelStyle: React.CSSProperties = {
   position: "absolute",
-  top: "100%",
+  top: "calc(100% + 4px)",
   left: 0,
   right: 0,
-  marginTop: 6,
   border: "1px solid #3a3f4b",
   borderRadius: 6,
   background: "#0f1115",
   maxHeight: 220,
   overflowY: "auto",
-  zIndex: 10
+  zIndex: 100,
+  boxShadow: "0 8px 24px rgba(0, 0, 0, 0.45)"
 };
 
 const suggestionStyle: React.CSSProperties = {

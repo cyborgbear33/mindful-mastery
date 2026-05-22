@@ -39,6 +39,7 @@ const MODE_OUTPUT_REQUIREMENTS: Record<WorksheetContentMode, string[]> = {
     "split core skill drills (Guided Exercises) from multi-step work (Applied Scenarios)",
     "include a dedicated Pencil-and-Paper Workbook Problems section with schoolbook-style exercises",
     "tailor workbook-style problems to the selected domain and subdomain (for example arithmetic/algebra/geometry style for quadrivium math topics)",
+    "write concrete student-facing prompts, not meta-instructions (for example use 5 + 5 = ____ instead of 'explain how addition works')",
     "for math notation, write expressions in LaTeX delimiters ($...$ inline, $$...$$ display) so symbols render correctly",
     "use compact italic type tags (for example _DR_, _PE_) before prompts and render a Problem Type Key at the bottom",
     "do not print raw ontology identifiers such as definition_recall or distinction_judgment in student-facing prompts",

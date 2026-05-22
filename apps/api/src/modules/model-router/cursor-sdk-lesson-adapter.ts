@@ -13,6 +13,13 @@ const formatAdapterError = (error: unknown): string => {
   return String(error);
 };
 
+const isTransientTransportError = (error: unknown): boolean => {
+  const message = formatAdapterError(error);
+  return /ECONNRESET|aborted|ConnectError|socket hang up|ETIMEDOUT/i.test(message);
+};
+
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
 export class CursorSdkLessonAdapter extends LessonModelAdapter {
   constructor(
     private readonly apiKey: string,
@@ -23,28 +30,38 @@ export class CursorSdkLessonAdapter extends LessonModelAdapter {
 
   async generate(input: GenerateModelInput): Promise<string> {
     const resolvedModelId = input.modelId?.trim() || this.defaultModelId;
+    const maxAttempts = 2;
+    let lastError: unknown;
 
-    try {
-      const { Agent } = await import("@cursor/sdk");
-      const result = await Agent.prompt(this.buildPrompt(input), {
-        apiKey: this.apiKey,
-        model: { id: resolvedModelId },
-        local: { cwd: process.cwd(), settingSources: [] }
-      });
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        const { Agent } = await import("@cursor/sdk");
+        const result = await Agent.prompt(this.buildPrompt(input), {
+          apiKey: this.apiKey,
+          model: { id: resolvedModelId },
+          local: { cwd: process.cwd(), settingSources: [] }
+        });
 
-      if (result.status !== "finished") {
-        throw new Error(`Cursor SDK run did not finish: ${result.status}`);
+        if (result.status !== "finished") {
+          throw new Error(`Cursor SDK run did not finish: ${result.status}`);
+        }
+
+        const content = String(result.result ?? "").trim();
+        if (!content) {
+          throw new Error("Cursor SDK returned empty content.");
+        }
+
+        return content;
+      } catch (error) {
+        lastError = error;
+        if (!isTransientTransportError(error) || attempt === maxAttempts) {
+          break;
+        }
+        await wait(250 * attempt);
       }
-
-      const content = String(result.result ?? "").trim();
-      if (!content) {
-        throw new Error("Cursor SDK returned empty content.");
-      }
-
-      return content;
-    } catch (error) {
-      throw new Error(`Cursor SDK generation failed: ${formatAdapterError(error)}`);
     }
+
+    throw new Error(`Cursor SDK generation failed: ${formatAdapterError(lastError)}`);
   }
 
   private buildPrompt(input: GenerateModelInput): string {
